@@ -1,0 +1,25 @@
+{
+    "name": "pug-check-ts",
+    "version": "0.1.0",
+    "type": "module",
+    "bin": {
+        "pug-check-ts": "./dist/cli/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "check:pug": "node dist/cli/check-pug.js",
+        "check:usage": "node dist/cli/check-usage.js"
+    },
+    "dependencies": {
+        "pug": "^3.0.2",
+        "pug-lexer": "^5.0.1",
+        "pug-parser": "^6.0.0",
+        "ts-morph": "^20.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.0.7",
+        "tsx": "^4.20.3",
+        "typescript": "^5.0.0"
+    }
+}

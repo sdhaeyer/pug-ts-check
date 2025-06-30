@@ -1,0 +1,13 @@
+//@ import type { User, Cart } from '../types/models'
+//@ expect { user: User, cart: Cart }
+
+extends layout.pug
+
+include _orderOverview.pug
+
+block headContent
+  link(rel="stylesheet", href="/css/cart/orderhistory.css")
+
+block content
+  +orderOverview(cart)
+  p Welcome #{user.name}
