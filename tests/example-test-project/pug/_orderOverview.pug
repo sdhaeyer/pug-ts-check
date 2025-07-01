@@ -1,4 +1,4 @@
-mixin orderOverview(cart)
+mixin orderOverview(cart : Cart) 
   ul
     each item in cart.items
       li= item.product.name + ' - ' + item.quantity + ' pcs'

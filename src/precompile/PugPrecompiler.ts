@@ -6,30 +6,34 @@ import path from "node:path";
 import fs from "node:fs";
 import lex from "pug-lexer";
 import parse from "pug-parser";
-
-export interface mappedLine {
-    line: number;
-    file: string;
-}
-
-export interface PrecompileResult {
-    precompiledCode: string;
-    lineMap: mappedLine[];
-}
+import { Logger } from "../utils/Logger.js";
 
 
-export function precompilePug(filePath: string): PugAst {
+
+export function precompilePug(filePath: string, fileSource?: string): PugAst {
     const absolutePath = path.resolve(filePath);
+    Logger.debug(`Precompiling Pug file: ${absolutePath}`);
 
+    let source = "";
+     if (!fileSource) {
+        if (!fs.existsSync(absolutePath)) {
+            throw new Error(`Pug file not found at path: ${absolutePath}`);
+        }
+        source = fs.readFileSync(absolutePath, "utf8");
+     }else{
+        source = fileSource;
 
-    const source = fs.readFileSync(absolutePath, "utf8");
+     }
+        
     const tokens = lex(source);
     let ast: PugAst = parse(tokens);
-    let includes:string[] = []
+    addFilenameToAst(ast, absolutePath);
+
+    let includes: string[] = []
 
     function visit(node: PugAstNode, currentFile: string) {
         if (!node) return;
-        console.log(`Visiting node type: ${node.type} at ${currentFile.split(path.sep).pop()}:${node.line}`);
+        Logger.debug(`Visiting node type: ${node.type} at ${currentFile.split(path.sep).pop()}:${node.line}`);
 
         if (node.type === "Include") {
 
@@ -42,11 +46,11 @@ export function precompilePug(filePath: string): PugAst {
 
         if (node.type === "Extends") {
             const parentPath = path.resolve(path.dirname(currentFile), node.file.path);
-            console.log(`Extending: ${parentPath}`);
+            Logger.debug(`Extending: ${parentPath}`);
 
-            console.log(`Generating AST for parent...`);
+            Logger.debug(`Generating AST for parent...`);
             const parentAst = precompilePug(parentPath);
-            console.log(`Generated AST for parent: ${parentPath}`);
+            Logger.debug(`Generated AST for parent: ${parentPath}`);
 
             // patch parent AST with filename info
             addFilenameToAst(parentAst, parentPath);
@@ -55,10 +59,10 @@ export function precompilePug(filePath: string): PugAst {
             const parentBlocks: Record<string, PugAstNode> = {};
             function collectBlocks(node: PugAstNode, store: Record<string, PugAstNode>) {
                 if (!node) return;
-                console.log(`Collecting blocks from node type: ${node.type} node name: ${node.name || "N/A"} `);
+                Logger.debug(`Collecting blocks from node type: ${node.type} node name: ${node.name || "N/A"} `);
                 //console.log("currennode: ", node)
                 if ((node.type === "Block" || node.type === "NamedBlock") && node.name) {
-                    console.log(`Found parent block: `, node);
+                    Logger.debug(`Found parent block: `, node);
                     store[node.name] = node;
                 }
                 if (node.nodes) {
@@ -69,21 +73,21 @@ export function precompilePug(filePath: string): PugAst {
                 }
             }
             collectBlocks(parentAst, parentBlocks);
-            console.log(`Collected ${Object.keys(parentBlocks).length} blocks from parent.`);
-            console.log(`Parent blocks: ${Object.keys(parentBlocks).join(", ")}`);
+            Logger.debug(`Collected ${Object.keys(parentBlocks).length} blocks from parent.`);
+            Logger.debug(`Parent blocks: ${Object.keys(parentBlocks).join(", ")}`);
 
             // collect blocks from the child (the one doing the extend)
-            const childBlocks: Record<string, any> = {};
+            const childBlocks: Record<string, PugAstNode> = {};
             // only pick block nodes at the *root* of the child
             ast.nodes.forEach((n: PugAstNode) => {
-                console.log(`Collecting child block: ${n.type} with name: ${n.name || "N/A"}`);
+                Logger.debug(`Collecting child block: ${n.type} with name: ${n.name || "N/A"}`);
                 if (n.type === "NamedBlock" && n.name) {
-                    console.log("Found child block:", n);
+                    Logger.debug("Found child block:", n);
                     childBlocks[n.name] = n;
                 }
             });
-            console.log(`Collected ${Object.keys(childBlocks).length} blocks from child.`);
-            console.log(`Child blocks: ${Object.keys(childBlocks).join(", ")}`);
+            Logger.debug(`Collected ${Object.keys(childBlocks).length} blocks from child.`);
+            Logger.debug(`Child blocks: ${Object.keys(childBlocks).join(", ")}`);
 
             // replace parent blocks with child overrides
             for (const blockName of Object.keys(parentBlocks)) {
@@ -118,20 +122,20 @@ export function precompilePug(filePath: string): PugAst {
 
 
     // now add the includes ... 
-    for(const includePath of includes) {
-        console.log(`Processing include: ${includePath}`);
+    for (const includePath of includes) {
+        Logger.debug(`Processing include: ${includePath}`);
         const includeAst = precompilePug(includePath);
         addFilenameToAst(includeAst, includePath);
 
         // merge the include AST into the main AST
         if (ast.nodes) {
-            ast.nodes.push(...includeAst.nodes);
+            ast.nodes = [...includeAst.nodes, ...(ast.nodes || [])];
         } else {
             ast.nodes = includeAst.nodes;
         }
     }
 
-    
+
 
 
     return ast;
@@ -142,17 +146,17 @@ export function precompilePug(filePath: string): PugAst {
  * Recursively walks a Pug AST node tree and assigns a `filename` property
  * to every node, so you can track its origin precisely.
  */
-export function addFilenameToAst(node: any, currentFile: string) {
+export function addFilenameToAst(node: PugAstNode, currentFile: string) {
     if (!node) return;
 
     node.filename = currentFile;
 
     if (node.nodes && Array.isArray(node.nodes)) {
-        node.nodes.forEach((child: any) => addFilenameToAst(child, currentFile));
+        node.nodes.forEach((child: PugAstNode) => addFilenameToAst(child, currentFile));
     }
 
     if (node.block && node.block.nodes) {
-        node.block.nodes.forEach((child: any) => addFilenameToAst(child, currentFile));
+        node.block.nodes.forEach((child: PugAstNode) => addFilenameToAst(child, currentFile));
     }
 
     // handle attributes on tags:

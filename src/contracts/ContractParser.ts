@@ -1,31 +1,36 @@
-import { log } from "../utils/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { Project } from "ts-morph";
 import path from "node:path";
 import fs from "node:fs";
 
 import { ContractParseError } from "../errors/ContractParseError.js";
+import type { ParseOptions, ParsedContract } from "../types/types.js"; // fix if needed
 
-export interface ParsedContract {
-    imports: Array<string>;
-    expects: Record<string, string>;
-}
-
-
-export interface ParseOptions {
-  projectPath?: string; // allow to override for tests
-}
 
 /**
  * Parse //@import and //@expect from pug source
  */
-export function parseContractComments(pugSource: string,  options: ParseOptions = {}): ParsedContract {
-    log("Parsing contract annotations in Pug...");
-
+export function parseContractComments(pugPath: string,  options: ParseOptions = {}, pugSource?: string): ParsedContract {
+    Logger.debug("Parsing contract annotations in Pug...");
     const projectPath = path.resolve(options.projectPath || ".");
+    const tmpDir = path.join(projectPath, ".tmp");
+
+   
+    
+    if (!pugSource) {
+
+        if (!fs.existsSync(pugPath)) {
+            throw new ContractParseError(`ContractParseError: Pug file not found at path: ${pugPath}`);
+        }
+        pugSource = fs.readFileSync(pugPath, "utf8");
+    }
+
+
+   
     const lines = pugSource.split("\n");
 
     const imports: ParsedContract["imports"] = [];
-    let expectsText: string | null = null;
+    let rawExpects: string | null = null;
 
     for (const line of lines) {
         const trimmed = line.trim();
@@ -35,37 +40,37 @@ export function parseContractComments(pugSource: string,  options: ParseOptions 
 
             if (ruleText.startsWith("import")) {
                 if (!ruleText.startsWith("import type")) {
-                    log(`⚠️  Consider using 'import type' to avoid runtime imports in contracts: ${ruleText}`);
+                    Logger.warn(`⚠️  Consider using 'import type' to avoid runtime imports in contracts: ${ruleText}`);
                 }
                 imports.push(ruleText);
             }
 
             if (ruleText.startsWith("expect")) {
-                if (expectsText !== null) {
+                if (rawExpects !== null) {
                     throw new ContractParseError("ContractParseError: Multiple //@expect blocks found; only one allowed.");
                 }
                 const expectMatch = ruleText.match(/expect\s+(.*)/);
                 if (expectMatch) {
-                    expectsText = expectMatch[1].trim();
+                    rawExpects = expectMatch[1].trim();
                 }
             }
         }
     }
 
-    if (!expectsText) {
+    if (!rawExpects) {
         throw new ContractParseError("No expect block found. Please add a //@ expect { ... } comment to your Pug file.");
     }
 
     // build the virtual file exactly with user-provided imports
     let fileSource = "";
     for (const importLine of imports) {
-        fileSource += `${importLine}\n`;
+        //fileSource += `${importLine}\n`;
+        fileSource += rebaseImport(importLine, pugPath, tmpDir) + "\n";
     }
-    fileSource += `type ExpectContract = ${expectsText};\n`;
+    fileSource += `type ExpectContract = ${rawExpects};\n`;
 
 
     // store to .tmp under projectPath
-    const tmpDir = path.join(projectPath, ".tmp");
     fs.mkdirSync(tmpDir, { recursive: true });
     const tmpPath = path.join(tmpDir, "VirtualExpectFile.ts");
     fs.writeFileSync(tmpPath, fileSource, "utf8");
@@ -108,5 +113,33 @@ export function parseContractComments(pugSource: string,  options: ParseOptions 
     // TODO: warn about unused imported types
     // TODO: support shared references/transitive validation
 
-    return { imports, expects };
+    return { imports, expects, rawExpects};
+}
+
+
+
+
+
+function rebaseImport(
+  importLine: string,
+  pugFilePath: string,
+  tmpDir: string
+): string {
+  // Match only from "...", with quotes
+  const match = importLine.match(/from\s+["']([^"']+)["']/);
+  if (!match) {
+    return importLine; // leave untouched if cannot parse
+  }
+
+  const originalPath = match[1];
+
+  // resolve where it *actually* lives
+  const pugDir = path.dirname(pugFilePath);
+  const absoluteTarget = path.resolve(pugDir, originalPath);
+
+  // now make a relative path from tmpDir to the target
+  const relativeToTmp = path.relative(tmpDir, absoluteTarget).replace(/\\/g, "/");
+
+  // substitute back
+  return importLine.replace(originalPath, relativeToTmp);
 }

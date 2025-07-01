@@ -59,11 +59,11 @@ It provides *runtime-safe* and *developer-friendly* type-checks for Pug, preserv
 - Keep a mapping:
   
     ````ts
-    interface LineMapEntry {
-      generatedLine: number;  // TS line
-      originFile: string;     // precompiled file
-      originLine: number;     // line in precompiled pug
-    }
+   export interface mappedLine {
+    line: number;
+    file: string;
+}
+
     ````
   
 - **Output:**
