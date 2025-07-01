@@ -8,7 +8,10 @@ import { precompilePug } from "../precompile/PugPrecompiler.js";
 import { generateTsFromPugAst } from "../tsgen/pugTsGenerator.js";
 import { validateGeneratedTs } from "../validate/validateGeneratedTs.js";
 import { Logger } from "../utils/Logger.js";
+import { glob } from "glob";
+
 import { printWithLineNumbers } from "../utils/utils.js";
+import { ContractParseError } from "../errors/ContractParseError.js";
 
 const program = new Command();
 
@@ -20,6 +23,7 @@ program
   .option("--verbose", "enable verbose output")
   .option("--silent", "disable most logs")
   .option("--watch", "watch a directory for changes and re-run")
+  .option("--projectPath <path>", "override project path (default: current working directory)")
   .action((targetPath, options) => {
     if (options.silent) {
       process.env.LOG_LEVEL = "";
@@ -30,7 +34,7 @@ program
     }
 
     const resolved = path.resolve(targetPath);
-    const projectPath = process.cwd();
+    const projectPath = options.projectPath || process.cwd();
 
     if (!fs.existsSync(resolved)) {
       console.error(`File or directory not found: ${resolved}`);
@@ -44,15 +48,26 @@ program
         Logger.info(`Watching directory ${resolved} for .pug changes...`);
 
         const watcher = chokidar.watch("**/*.pug", {
-          cwd: resolved,
+          
           ignoreInitial: false,
         });
-
+        watcher.on("ready", () => {
+          Logger.info("✅ chokidar is ready and watching for changes.");
+        });
         watcher.on("all", (event, file) => {
           const fullPath = path.join(resolved, file);
           Logger.info(`Detected ${event} in ${file}, re-checking...`);
-          runTypeCheck(fullPath, projectPath);
+          //runTypeCheck(fullPath, projectPath);
         });
+        watcher.on("error", (err) => {
+          Logger.error(`chokidar error: ${err}`);
+        });
+        // manually run once using glob
+        const files = glob.sync("**/*.pug", { cwd: resolved });
+        for (const file of files) {
+            const fullPath = path.join(resolved, file);
+            runTypeCheck(fullPath, projectPath);
+        }
 
       } else {
         const files = fs
@@ -79,7 +94,7 @@ program.parse();
 function runTypeCheck(pugPath: string, projectPath: string) {
   try {
     const pugSource = fs.readFileSync(pugPath, "utf8");
-    const contract = parseContractComments(pugPath, { projectPath }, pugSource);
+    const contract = parseContractComments(pugPath, pugSource,  { projectPath });
 
     const ast = precompilePug(pugPath, pugSource);
     const tsResult = generateTsFromPugAst(ast, contract);
@@ -87,16 +102,20 @@ function runTypeCheck(pugPath: string, projectPath: string) {
     Logger.info(`✅ Generated TypeScript for ${path.basename(pugPath)}:`);
     // printWithLineNumbers(tsResult.tsSource);
 
-    Logger.info("✅ Starting type-check validation...");
+    // Logger.info("✅ Starting type-check validation...");
 
-    validateGeneratedTs(
-      tsResult.tsSource,
-      tsResult.lineMap,
-      { projectPath }
-    );
-
-    Logger.info(`✅ ${path.basename(pugPath)} passed type-check!`);
+    let diags = validateGeneratedTs( tsResult.tsSource, tsResult.lineMap, { projectPath } );
+    if (diags.length > 0) {
+        Logger.error(`❌ ${path.basename(pugPath)} failed type-check!`);
+    }else{
+        Logger.info(`✅ ${path.basename(pugPath)} passed type-check!`);
+    }
   } catch (err) {
-    console.error(`❌ pug-ts-check failed for ${pugPath}:\n${err}`);
+
+      if (err instanceof ContractParseError) {
+          console.error(`❌ Contract parse failed ${pugPath} - projectpath ${projectPath}: `, err.message);
+      } else {
+          console.error("❌ General error during parsing:", err);
+      }
   }
 }

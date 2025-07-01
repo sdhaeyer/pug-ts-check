@@ -14,7 +14,7 @@ try {
     const pugSource = fs.readFileSync(pugPath, "utf8");
 
     // parse the //@import + //@expect
-    const contract = parseContractComments(pugPath, { projectPath: "./tests/example-test-project" }, pugSource);
+    const contract = parseContractComments(pugPath,pugSource, { projectPath: "./tests/example-test-project" } );
 
     // flatten the pug AST
     const ast = precompilePug(pugPath, pugSource);

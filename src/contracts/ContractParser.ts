@@ -10,9 +10,14 @@ import type { ParseOptions, ParsedContract } from "../types/types.js"; // fix if
 /**
  * Parse //@import and //@expect from pug source
  */
-export function parseContractComments(pugPath: string,  options: ParseOptions = {}, pugSource?: string): ParsedContract {
+export function parseContractComments(pugPath: string, pugSource?: string, options?: ParseOptions): ParsedContract {
     Logger.debug("Parsing contract annotations in Pug...");
-    const projectPath = path.resolve(options.projectPath || ".");
+    let projectPath ="."
+    if  (options?.projectPath) {
+        Logger.debug(`Using project path: ${options.projectPath}`);
+        projectPath = path.resolve(options.projectPath || ".");
+    }
+    
     const tmpDir = path.join(projectPath, ".tmp");
 
    

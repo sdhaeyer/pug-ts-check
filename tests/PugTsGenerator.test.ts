@@ -10,8 +10,9 @@ import { Logger } from "../src/utils/Logger.js";
 try {
     const pugPath = path.resolve("./tests/example-test-project/pug/sample.pug");
     const pugSource = fs.readFileSync(pugPath, "utf8");
-
-    const parsed = parseContractComments(pugPath, { projectPath: "./tests/example-test-project" }, pugSource);
+    const projectPath = "./tests/example-test-project";
+    
+    const parsed = parseContractComments(pugPath,  pugSource, { projectPath });
     // precompile the sample pug to get a flat AST
     const ast = precompilePug(pugPath, pugSource);
     //console.log(stringifyPugAst(ast));

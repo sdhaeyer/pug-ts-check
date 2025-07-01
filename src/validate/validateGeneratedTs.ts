@@ -3,8 +3,9 @@ import path from "node:path";
 import { Project } from "ts-morph";
 import { Logger } from "../utils/Logger.js";
 import type { MappedLine, ParseOptions } from "../types/types.js"; // fix if needed
+import type { Diagnostic } from "ts-morph";
 
-export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], options: ParseOptions = {} ):Diagnostic<ts.Diagnostic>[]   {
+export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], options: ParseOptions = {} ):Diagnostic[]   {
     Logger.debug("Starting type-check of generated TypeScript...");
 
     const projectPath = path.resolve(options.projectPath || ".");
