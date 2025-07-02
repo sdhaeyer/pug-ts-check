@@ -1,0 +1,28 @@
+//- test-complex.pug
+
+//@import type { User, Cart, Product } from "../types/models"
+//@expect { user: User, cart: Cart, featured: Product[] }
+
+extends layout.pug
+
+block content
+  h1 Welcome #{user.name}
+  p You have #{cart.items.length} items in your cart.
+
+  ul
+    each item in cart.items
+      li= item.product.name + " - " + item.quantity
+
+  if featured.length
+    h2 Featured products
+    ul
+      each product in featured
+        li
+          | #{product.name} - #{product.price} EUR
+
+  +orderSummary(cart)
+
+  mixin orderSummary(cart: Cart)
+    h3 Cart Summary
+     for item in cart.items
+        p #{item.product.name}: #{item.quantity} pcs

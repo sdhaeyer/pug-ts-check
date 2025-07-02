@@ -1,0 +1,35 @@
+//@ import type { User, Cart, Product } from "../types/models"
+//@expect { user: User, cart: Cart, featured: Product[], isAdmin: Boolean }
+
+extends layout.pug
+
+block content
+  h1 Welcome #{user.name}
+
+  if isAdmin
+    p You are an administrator.
+  else
+    p Regular user privileges.
+
+  ul
+    each item in cart.items
+      li #{item.product.name} (#{item.quantity} pcs)
+
+  if featured.length > 0
+    h2 Featured products
+    ul
+      each product in featured
+        li #{product.name} - #{product.price} EUR
+  else
+    p No featured products at this time.
+
+  +cartSummary(cart)
+
+  mixin cartSummary(cart: Cart)
+    h3 Cart Summary
+    ul
+      each item in cart.items
+        li #{item.product.name} x #{item.quantity}
+    if cart.items.length > 3
+      p You qualify for a discount!
+

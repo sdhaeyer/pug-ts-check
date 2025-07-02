@@ -9,8 +9,9 @@
     "skipLibCheck": true,
     "allowJs": false,
     "resolveJsonModule": true,
-    "types": [],
-    "baseUrl": "."
+    "baseUrl": ".",
+    "lib": ["ESNext", "DOM"],
+    "types": ["node"]
   },
   "include": ["**/*.ts"]
 }
