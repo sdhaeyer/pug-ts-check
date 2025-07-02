@@ -18,7 +18,7 @@ export function precompilePug(filePath: string, fileSource?: string): PugAst {
     let source = "";
      if (!fileSource) {
         if (!fs.existsSync(absolutePath)) {
-            throw new ParseError(`Precompile: Pug file not found at path: ${absolutePath}`);
+            throw new ParseError(`Precompile: Pug file not found at path: ${absolutePath}`, absolutePath, 1);
         }
         source = fs.readFileSync(absolutePath, "utf8");
      }else{

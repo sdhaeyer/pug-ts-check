@@ -5,29 +5,38 @@ import { Logger } from "../utils/Logger.js";
 import type { MappedLine, ParseOptions } from "../types/types.js"; // fix if needed
 import type { Diagnostic } from "ts-morph";
 
-export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], options: ParseOptions = {} ):Diagnostic[]   {
+import { getTsProject } from "./projectCache.js";
+import {config} from "../config/config.js";
+
+export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[] ):Diagnostic[]   {
     Logger.debug("Starting type-check of generated TypeScript...");
 
-    const projectPath = path.resolve(options.projectPath || ".");
+    const projectPath = config.projectPath;
 
-    const tmpDir = path.join(projectPath, ".tmp");
-    fs.mkdirSync(tmpDir, { recursive: true });
-    const tmpPath = path.join(tmpDir, "VirtualGeneratedFile.ts");
-    fs.writeFileSync(tmpPath, tsSource, "utf8");
-
+ 
     const tsConfig = path.join(projectPath, "tsconfig.json");
-    const project = new Project({
-        tsConfigFilePath: tsConfig,
+    Logger.debug(`Using tsconfig at: ${tsConfig}`);
+    const project = getTsProject();
+
+    
+    // ensure the tmp dir exists on disk
+    fs.mkdirSync(config.tmpDir, { recursive: true });
+
+    const virtualFileName = path.join(config.tmpDir, "VirtualGeneratedFile.ts");
+
+    // note: this is just a *name*, does not exist on disk
+    const sourceFile = project.createSourceFile(virtualFileName, tsSource, {
+    overwrite: true,
     });
+    
+   
 
-    const sourceFile = project.addSourceFileAtPath(tmpPath);
+    //Logger.debug(`Loaded virtual file for type-checking: ${tmpPath}`);
 
-    Logger.debug(`Loaded virtual file for type-checking: ${tmpPath}`);
-
-    const diagnostics = project.getPreEmitDiagnostics();
+    const diagnostics = sourceFile.getPreEmitDiagnostics();
 
     if (diagnostics.length === 0) {
-        Logger.debug("✅ Type checking passed with ts-morph!");
+        //Logger.info("✅ Type checking passed with ts-morph!");
         return diagnostics;
     }
 
@@ -44,6 +53,9 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], op
             } else {
                 console.log(`At generated.ts:${line}\n${message}`);
             }
+        }else {
+            // If no position, just log the message
+            console.log(`ERROR: ${diag.getMessageText()}`);
         }
     }
     if(diagnostics.length > 0) {

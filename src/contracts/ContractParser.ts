@@ -4,20 +4,20 @@ import path from "node:path";
 import fs from "node:fs";
 
 import { ParseError } from "../errors/ParseError.js";
-import type { ParseOptions, ParsedContract } from "../types/types.js"; // fix if needed
-import { rebaseImport } from "../utils/utils.js";
+import type {  ParsedContract } from "../types/types.js"; // fix if needed
+import { absoluteImport, rebaseImport } from "../utils/utils.js";
+import { config } from "../config/config.js";
+
+import { getTsProject } from "../validate/projectCache.js";
 
 
 /**
  * Parse //@import and //@expect from pug source
  */
-export function parseContractComments(pugPath: string, pugSource?: string, options?: ParseOptions): ParsedContract {
+export function parseContractComments(pugPath: string, pugSource?: string): ParsedContract {
     Logger.debug("Parsing contract annotations in Pug...");
-    let projectPath ="."
-    if  (options?.projectPath) {
-        Logger.debug(`Using project path: ${options.projectPath}`);
-        projectPath = path.resolve(options.projectPath || ".");
-    }
+    let projectPath = config.projectPath;
+    var errors:ParseError[] = [];
     
     const tmpDir = path.join(projectPath, ".tmp");
 
@@ -26,7 +26,7 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
     if (!pugSource) {
 
         if (!fs.existsSync(pugPath)) {
-            throw new ParseError(`ContractParseError: Pug file not found at path: ${pugPath}`);
+            throw new ParseError(`ContractParseError: Pug file not found`, pugPath, 1);
         }
         pugSource = fs.readFileSync(pugPath, "utf8");
     }
@@ -34,8 +34,11 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
 
    
     const lines = pugSource.split("\n");
+    let currentLine = 1;
+    let atExpectLine = -1
+    
+    const rawImports: ParsedContract["rawImports"] = [];
 
-    const imports: ParsedContract["imports"] = [];
     let rawExpects: string | null = null;
 
     for (const line of lines) {
@@ -46,32 +49,42 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
 
             if (ruleText.startsWith("import")) {
                 if (!ruleText.startsWith("import type")) {
+
                     Logger.warn(`⚠️  Consider using 'import type' to avoid runtime imports in contracts: ${ruleText}`);
+                    Logger.warn(`⚠️  Found in ${pugPath}:${currentLine} on line ${currentLine}`);
                 }
-                imports.push(ruleText);
+                rawImports.push(ruleText);
             }
 
             if (ruleText.startsWith("expect")) {
                 if (rawExpects !== null) {
-                    throw new ParseError("ContractParseError: Multiple //@expect blocks found; only one allowed.");
+                    throw new ParseError("ContractParseError: Multiple //@expect blocks found; only one allowed.", pugPath, currentLine);
                 }
                 const expectMatch = ruleText.match(/expect\s+(.*)/);
                 if (expectMatch) {
                     rawExpects = expectMatch[1].trim();
+                    atExpectLine = currentLine;
                 }
             }
         }
+        currentLine++;
     }
 
     if (!rawExpects) {
-        throw new ParseError("No expect block found. Please add a //@ expect { ... } comment to your Pug file.");
+        throw new ParseError("No expect block found. Please add a //@ expect { ... } comment to your Pug file.", pugPath, 0);
+    }
+
+    const rebasedImports: ParsedContract["rebasedImports"] = [];
+    const absoluteImports: ParsedContract["absoluteImports"] = [];
+    for (const rawImport of rawImports) {
+        rebasedImports.push(rebaseImport(rawImport, pugPath));
+        absoluteImports.push(absoluteImport(rawImport, pugPath));
     }
 
     // build the virtual file exactly with user-provided imports
     let fileSource = "";
-    for (const importLine of imports) {
-        //fileSource += `${importLine}\n`;
-        fileSource += rebaseImport(importLine, pugPath, tmpDir) + "\n";
+    for (const importLine of absoluteImports) {
+        fileSource += importLine + "\n";
     }
     fileSource += `type ExpectContract = ${rawExpects};\n`;
 
@@ -83,23 +96,22 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
 
 
     // setup ts-morph
-    const tsConfig = path.join(projectPath, "tsconfig.json");
-    const project = new Project({
-        tsConfigFilePath: tsConfig,
-    });
+    const project = getTsProject();
 
 
     const sourceFile = project.addSourceFileAtPath(tmpPath);
+    sourceFile.refreshFromFileSystemSync();
 
     const typeAlias = sourceFile.getTypeAliasOrThrow("ExpectContract");
     const type = typeAlias.getType();
 
     if (!type.isObject()) {
-        throw new ParseError("ContractParseError: //@expect must describe an object type.");
+        errors.push(new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, atExpectLine));
+        // not throwing cause i think dingske also handles it.throw new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, atExpectLine);
     }
 
     const props = type.getProperties();
-    const expects: Record<string, string> = {};
+    const virtualExpects: Record<string, string> = {};
 
     for (const prop of props) {
         const name = prop.getName();
@@ -109,17 +121,19 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
 
         const symbol = typeAtLoc.getSymbol();
         if (!symbol) {
-            throw new ParseError(`ContractParseError: Unknown type referenced in @expect: '${typeAtLoc.getText()}'`);
+            errors.push(new ParseError(`ContractParseError: Unknown type referenced in @expect: '${typeAtLoc.getText()}'`, pugPath, atExpectLine));
+            // not throwing cause i think dingske also handles it.
+            // throw new ParseError(`ContractParseError: Unknown type referenced in @expect: '${typeAtLoc.getText()}'`, pugPath, atExpectLine);
         }
 
-        expects[name] = typeAtLoc.getText();
+        virtualExpects[name] = typeAtLoc.getText();
     }
 
 
     // TODO: warn about unused imported types
     // TODO: support shared references/transitive validation
 
-    return { imports, expects, rawExpects};
+    return { rebasedImports, virtualExpects, rawImports, rawExpects, absoluteImports,errors, atExpectLine, pugPath};
 }
 
 

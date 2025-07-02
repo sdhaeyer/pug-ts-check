@@ -4,8 +4,12 @@ import chokidar from "chokidar";
 import path from "node:path";
 import fs from "node:fs";
 import { Logger } from "../utils/Logger.js";
-import { runTypeCheck } from "../runner/runTypeCheck.js";
+import { reScanAll, runTypeCheck } from "../runner/runTypeCheck.js";
 
+
+import { config } from "../config/config.js";
+import { loadPugConfig, setPugConfigFromUser } from "../config/loadPugConfig.js";
+import { getTsProject } from "../validate/projectCache.js";
 
 const program = new Command();
 
@@ -17,69 +21,92 @@ program
   .option("--verbose", "enable verbose output")
   .option("--silent", "disable most logs")
   .option("--watch", "watch a directory for changes and re-run")
-  .option("--projectPath <path>", "override project path (default: current working directory)")
+  .option("--projectPath <path>", "TypeScript project path")
+  .option("--tmpDir <dir>", "temporary dir")
   .action((targetPath, options) => {
     if (options.silent) {
-      process.env.LOG_LEVEL = "";
+      Logger.setLevel("silent");
     } else if (options.verbose) {
-      process.env.LOG_LEVEL = "debug";
+      Logger.setLevel("debug");
     } else {
-      process.env.LOG_LEVEL = "info";
+      Logger.setLevel("info");
+    }
+    
+    setPugConfigFromUser();
+    if (options.tmpDir) {
+      config.tmpDir = options.tmpDir;
+    }
+    if (options.projectPath) {
+      config.projectPath = options.projectPath;
     }
 
-    const resolved = path.resolve(targetPath);
-    const projectPath = options.projectPath || process.cwd();
-
-    if (!fs.existsSync(resolved)) {
-      console.error(`File or directory not found: ${resolved}`);
-      process.exit(1);
+    if (options.pugPaths && options.pugPaths.length > 0) {
+      config.pugPaths = options.pugPaths.map((p: string) => path.resolve(p));
     }
 
-    const stat = fs.statSync(resolved);
+    var singleFile = false
+    if (targetPath) {
+      config.pugPaths = [path.resolve(targetPath)];
+      const resolved = path.resolve(targetPath)
 
-    if (stat.isDirectory()) {
+      if (!fs.existsSync(resolved)) {
+        console.error(`File or directory not found: ${resolved}`);
+        process.exit(1);
+      }
+      const stat = fs.statSync(resolved);
+      if (stat.isFile()) {
+        singleFile = true;
+        Logger.info(`Running type-check for single file: ${resolved}`);
+      }
+    }
+    
+    
       if (options.watch) {
-        Logger.info(`Watching directory ${resolved} for .pug changes...`);
-        const watcher = chokidar.watch(resolved, {
-          ignored: (filePath, stats) => stats?.isFile() ? !filePath.endsWith(".pug") : false
-        });
+        Logger.info(`Watching directories:\n - ${config.pugPaths.join("\n - ")}`);
+        const watcher = chokidar.watch(config.pugPaths, {
+          ignored: (filePath, stats) => {
+            if (!stats?.isFile()) return false;
 
+            // only ignore files that are neither .pug nor .ts
+            return !filePath.endsWith(".pug") && !filePath.endsWith(".ts");
+          },
+          ignoreInitial: true,
+        });
         watcher.on("ready", () => {
-          Logger.info("✅ chokidar is ready and watching for changes.");
+          //console.clear();
+          Logger.info("✅ Ready and watching for changes.");
+          // Initial scan
+          reScanAll(watcher);
         });
-        
-        watcher.on("all", (event, file) => {
 
+        watcher.on("all", (event, file) => {
+          // console.clear();
           Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
           // to only check if event is add or change
           if (event === "add" || event === "change") {
-            runTypeCheck(file, projectPath);
+            if (file.endsWith(".ts")) {
+              const refreshed = getTsProject().getSourceFile(file);
+              if (refreshed) {
+                refreshed.refreshFromFileSystemSync();
+                Logger.debug(`Refreshed ${file} in ts-morph project`);
+              }
+            }
+            reScanAll(watcher);
           }
+         
         });
         watcher.on("error", (err) => {
           Logger.error(`chokidar error: ${err}`);
         });
-
+        
 
       } else {
-        const files = fs
-          .readdirSync(resolved)
-          .filter((f) => f.endsWith(".pug"));
-
-        if (files.length === 0) {
-          console.log(`No .pug files found in directory ${resolved}`);
-          return;
-        }
-
-        for (const file of files) {
-          runTypeCheck(path.join(resolved, file), projectPath);
-        }
+        reScanAll();
       }
-
-    } else {
-      runTypeCheck(resolved, projectPath);
-    }
+      
+   
   });
 
 program.parse();
+
 

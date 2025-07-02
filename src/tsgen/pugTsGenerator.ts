@@ -3,7 +3,9 @@
 import type { PugAst, PugAstNode } from "../types/PugAst.js";
 import { Logger } from "../utils/Logger.js";
 import type { MappedLine, ParsedContract } from "../types/types.js";
-import { rebaseImport } from "../utils/utils.js";
+import { config } from "../config/config.js";
+import path from "node:path";
+
 
 
 
@@ -23,7 +25,7 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
     const lineMap: MappedLine[] = [];
 
 
-    function addLine(src: string, Map: MappedLine = { line: 0, file: "root" }) {
+    function addLine(src: string, Map: MappedLine = { line: 0, file: "file/path/not/given" }) {
         Logger.debug(`Adding line: ${src} at ${Map.file}:${Map.line}`);
         const indentation = indentString.repeat(indentLevel);
         tsSource += indentation + src + "\n";
@@ -33,15 +35,17 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
 
     addLine("// Generated TypeScript from Pug AST");
 
+    
+
     // Add contract imports
-    for (const imp of contract.imports) {
-        addLine(rebaseImport(imp), { line: 0, file: "contract" });
+    for (const imp of contract.absoluteImports) {
+        addLine(imp, { line: 0, file: "contract" });
     }
 
    
-    addLine(`export function render(locals: ${contract.rawExpects}) {`)
+    addLine(`export function render(locals: ${contract.rawExpects}) {`, { line: contract.atExpectLine, file: contract.pugPath });
     indentLevel++;
-    addLine(`const { ${Object.keys(contract.expects).join(", ")} } = locals;`)
+    addLine(`const { ${Object.keys(contract.virtualExpects).join(", ")} } = locals;`, { line: contract.atExpectLine, file: contract.pugPath });
 
     function visit(node: PugAstNode) {
         if (!node) return;
