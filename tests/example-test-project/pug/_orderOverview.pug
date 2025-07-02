@@ -1,7 +1,12 @@
-//@ import { Cart } from '../types/models.js';
+//@ import type { Cart } from '../types/models.js';
+//@ import type { User } from '../types/models.js';
 
 //@ expect {}
-mixin orderOverview(cart : Cart) 
+mixin orderOverview(cart : Cart, user: User) 
   ul
     each item in cart.items
       li= item.product.name + ' - ' + item.quantity + ' pcs'
+  if cart.items.length > 0
+    p Total items in cart: #{cart.items.length}
+  else
+    p Your cart is empty.

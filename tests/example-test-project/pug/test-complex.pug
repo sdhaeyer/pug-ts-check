@@ -5,6 +5,8 @@
 
 extends layout.pug
 
+include _orderOverview.pug
+
 block content
   h1 Welcome #{user.name}
   p You have #{cart.items.length} items in your cart.

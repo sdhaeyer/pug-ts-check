@@ -1,9 +1,9 @@
-//@ import type { User, Cart } from '../types/models.js'
+//@ import type { User, Cart } from '../../types/models.js'
 //@ expect { user: User, cart: Cart }
 
-extends layout.pug
+extends ../layout.pug
 
-include _orderOverview.pug
+include ../_orderOverview.pug
 
 block headContent
   link(rel="stylesheet", href="/css/cart/orderhistory.css")
@@ -11,3 +11,5 @@ block headContent
 block content
   +orderOverview(cart, user)
   p Welcome #{user.name} to your order history page!
+  p elaba alles goed hier laliu
+ddddvcvc

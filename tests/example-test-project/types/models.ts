@@ -12,6 +12,8 @@ export interface CartItem {
 }
 export interface Product {
   id: number;
-  name: string;
+  naam: string;
+  descriptions: string[];
+  description: string;
   price: number;
 }
