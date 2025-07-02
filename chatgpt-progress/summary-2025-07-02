@@ -1,0 +1,82 @@
+# 📝 Project Summary — `pug-ts-check`  
+**Date: 2025-07-02**  
+
+## ✅ Overview  
+- Built a CLI tool (`pug-ts-check`) to type-check Pug templates against TypeScript contracts.  
+- Parses `//@import` and `//@expect` comments to build a virtual TypeScript “contract” type.  
+- Precompiles the Pug template to an AST.  
+- Generates equivalent TypeScript code to validate the contract.  
+- Uses `ts-morph` to type-check the generated TypeScript.  
+- Supports watching a directory with `chokidar` (v4) for live-rechecking on file changes.  
+- Supports line-mapping from generated TypeScript back to original Pug lines.  
+- Project path can be overridden with `--projectPath`.  
+- Integrated logging levels (`info`, `debug`, `silent`) for cleaner CLI output.  
+
+---
+
+## ✅ Technical Highlights  
+
+- **Contract Parsing**  
+  - Detects `//@import` and `//@expect` blocks  
+  - Writes a temporary `.tmp/VirtualExpectFile.ts`  
+  - Resolves relative imports for validation  
+  - Throws errors on invalid or duplicate `//@expect` blocks  
+
+- **Pug Precompile + TypeScript Generation**  
+  - Walks Pug AST  
+  - Generates TypeScript with correct locals destructuring  
+  - Supports mixins, loops, conditionals  
+  - Preserves line numbers via a `lineMap`  
+  - Pretty-prints with indentation  
+  - Handles nested blocks and `if` conditions  
+
+- **Type Checking**  
+  - Uses `ts-morph` on the generated `.tmp/VirtualGeneratedFile.ts`  
+  - Maps TypeScript errors back to the Pug source  
+  - Supports custom project `tsconfig.json`  
+  - Allows controlling `lib` options if needed  
+  - Type errors shown with friendly messages  
+
+- **Watcher**  
+  - Uses chokidar v4  
+  - Because chokidar v4 dropped glob patterns, replaced it with:  
+    ```js
+    chokidar.watch(resolved, {
+      ignored: (filePath, stats) => stats?.isFile() ? !filePath.endsWith(".pug") : false,
+    });
+    ```
+  - `--watch` mode will re-run the type-check on any detected changes  
+  - Logs `add`, `change`, and `unlink` events  
+
+---
+
+## ✅ Lessons & Issues Encountered  
+
+- Pug mixins require carefully stripping TypeScript type annotations to avoid runtime errors  
+- `ts-morph` sees only what is in the `tsconfig`, so correct project scoping is essential  
+- Needed to use `skipAddingFilesFromTsConfig` to avoid pulling in the entire repo  
+- The line map logic required carefully tracking Pug AST lines to TypeScript output  
+- Chokidar v4 no longer supports globs directly, which was an important migration step  
+- Chrome browser slowed down after very long ChatGPT threads (no specific solution yet from OpenAI — a **new chat** is best after long sessions)  
+
+---
+
+## ✅ Next Ideas  
+
+- Possibly add a `--fix` option to auto-insert missing `//@expect`  
+- Consider a VSCode extension integration  
+- Add support for multi-root monorepos  
+- Explore caching to speed up repeated checks  
+- Better test coverage for deeply nested Pug features  
+
+---
+
+## ✅ Example Commands  
+
+```bash
+npx tsx src/cli/pug-ts-check.ts ./tests/example-test-project/pug --watch --projectPath ./tests/example-test-project
+```
+
+---
+
+**Great work pushing this forward — let’s continue in a new chat next time!** 🚀
