@@ -7,6 +7,7 @@ import fs from "node:fs";
 import lex from "pug-lexer";
 import parse from "pug-parser";
 import { Logger } from "../utils/Logger.js";
+import { ParseError } from "../errors/ParseError.js";
 
 
 
@@ -17,7 +18,7 @@ export function precompilePug(filePath: string, fileSource?: string): PugAst {
     let source = "";
      if (!fileSource) {
         if (!fs.existsSync(absolutePath)) {
-            throw new Error(`Pug file not found at path: ${absolutePath}`);
+            throw new ParseError(`Precompile: Pug file not found at path: ${absolutePath}`);
         }
         source = fs.readFileSync(absolutePath, "utf8");
      }else{

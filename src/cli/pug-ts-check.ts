@@ -1,16 +1,11 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import chokidar from "chokidar";
 import path from "node:path";
 import fs from "node:fs";
-import chokidar from "chokidar";
-import { parseContractComments } from "../contracts/ContractParser.js";
-import { precompilePug } from "../precompile/PugPrecompiler.js";
-import { generateTsFromPugAst } from "../tsgen/pugTsGenerator.js";
-import { validateGeneratedTs } from "../validate/validateGeneratedTs.js";
 import { Logger } from "../utils/Logger.js";
+import { runTypeCheck } from "../runner/runTypeCheck.js";
 
-import { printWithLineNumbers } from "../utils/utils.js";
-import { ContractParseError } from "../errors/ContractParseError.js";
 
 const program = new Command();
 
@@ -45,16 +40,16 @@ program
     if (stat.isDirectory()) {
       if (options.watch) {
         Logger.info(`Watching directory ${resolved} for .pug changes...`);
-
         const watcher = chokidar.watch(resolved, {
-          // ignoreInitial: false,     // default is false — no need to include
           ignored: (filePath, stats) => stats?.isFile() ? !filePath.endsWith(".pug") : false
         });
+
         watcher.on("ready", () => {
           Logger.info("✅ chokidar is ready and watching for changes.");
         });
+        
         watcher.on("all", (event, file) => {
-          
+
           Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
           // to only check if event is add or change
           if (event === "add" || event === "change") {
@@ -88,31 +83,3 @@ program
 
 program.parse();
 
-function runTypeCheck(pugPath: string, projectPath: string) {
-  try {
-    const pugSource = fs.readFileSync(pugPath, "utf8");
-    const contract = parseContractComments(pugPath, pugSource,  { projectPath });
-
-    const ast = precompilePug(pugPath, pugSource);
-    const tsResult = generateTsFromPugAst(ast, contract);
-
-    Logger.debug(`✅ Generated TypeScript for ${path.basename(pugPath)}:`);
-    // printWithLineNumbers(tsResult.tsSource);
-
-    // Logger.info("✅ Starting type-check validation...");
-
-    let diags = validateGeneratedTs( tsResult.tsSource, tsResult.lineMap, { projectPath } );
-    if (diags.length > 0) {
-        Logger.error(`❌ ${path.basename(pugPath)} failed type-check!`);
-    }else{
-        Logger.info(`✅ ${path.basename(pugPath)} passed type-check!`);
-    }
-  } catch (err) {
-
-      if (err instanceof ContractParseError) {
-          console.error(`❌ Contract parse failed ${pugPath} - projectpath ${projectPath}: `, err.message);
-      } else {
-          console.error("❌ General error during parsing:", err);
-      }
-  }
-}

@@ -3,8 +3,9 @@ import { Project } from "ts-morph";
 import path from "node:path";
 import fs from "node:fs";
 
-import { ContractParseError } from "../errors/ContractParseError.js";
+import { ParseError } from "../errors/ParseError.js";
 import type { ParseOptions, ParsedContract } from "../types/types.js"; // fix if needed
+import { rebaseImport } from "../utils/utils.js";
 
 
 /**
@@ -25,7 +26,7 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
     if (!pugSource) {
 
         if (!fs.existsSync(pugPath)) {
-            throw new ContractParseError(`ContractParseError: Pug file not found at path: ${pugPath}`);
+            throw new ParseError(`ContractParseError: Pug file not found at path: ${pugPath}`);
         }
         pugSource = fs.readFileSync(pugPath, "utf8");
     }
@@ -52,7 +53,7 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
 
             if (ruleText.startsWith("expect")) {
                 if (rawExpects !== null) {
-                    throw new ContractParseError("ContractParseError: Multiple //@expect blocks found; only one allowed.");
+                    throw new ParseError("ContractParseError: Multiple //@expect blocks found; only one allowed.");
                 }
                 const expectMatch = ruleText.match(/expect\s+(.*)/);
                 if (expectMatch) {
@@ -63,7 +64,7 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
     }
 
     if (!rawExpects) {
-        throw new ContractParseError("No expect block found. Please add a //@ expect { ... } comment to your Pug file.");
+        throw new ParseError("No expect block found. Please add a //@ expect { ... } comment to your Pug file.");
     }
 
     // build the virtual file exactly with user-provided imports
@@ -94,7 +95,7 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
     const type = typeAlias.getType();
 
     if (!type.isObject()) {
-        throw new ContractParseError("ContractParseError: //@expect must describe an object type.");
+        throw new ParseError("ContractParseError: //@expect must describe an object type.");
     }
 
     const props = type.getProperties();
@@ -108,7 +109,7 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
 
         const symbol = typeAtLoc.getSymbol();
         if (!symbol) {
-            throw new ContractParseError(`ContractParseError: Unknown type referenced in @expect: '${typeAtLoc.getText()}'`);
+            throw new ParseError(`ContractParseError: Unknown type referenced in @expect: '${typeAtLoc.getText()}'`);
         }
 
         expects[name] = typeAtLoc.getText();
@@ -123,28 +124,3 @@ export function parseContractComments(pugPath: string, pugSource?: string, optio
 
 
 
-
-
-function rebaseImport(
-  importLine: string,
-  pugFilePath: string,
-  tmpDir: string
-): string {
-  // Match only from "...", with quotes
-  const match = importLine.match(/from\s+["']([^"']+)["']/);
-  if (!match) {
-    return importLine; // leave untouched if cannot parse
-  }
-
-  const originalPath = match[1];
-
-  // resolve where it *actually* lives
-  const pugDir = path.dirname(pugFilePath);
-  const absoluteTarget = path.resolve(pugDir, originalPath);
-
-  // now make a relative path from tmpDir to the target
-  const relativeToTmp = path.relative(tmpDir, absoluteTarget).replace(/\\/g, "/");
-
-  // substitute back
-  return importLine.replace(originalPath, relativeToTmp);
-}

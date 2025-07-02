@@ -3,6 +3,7 @@
 import type { PugAst, PugAstNode } from "../types/PugAst.js";
 import { Logger } from "../utils/Logger.js";
 import type { MappedLine, ParsedContract } from "../types/types.js";
+import { rebaseImport } from "../utils/utils.js";
 
 
 
@@ -34,7 +35,7 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
 
     // Add contract imports
     for (const imp of contract.imports) {
-        addLine(imp, { line: 0, file: "contract" });
+        addLine(rebaseImport(imp), { line: 0, file: "contract" });
     }
 
    
