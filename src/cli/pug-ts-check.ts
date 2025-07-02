@@ -8,7 +8,6 @@ import { precompilePug } from "../precompile/PugPrecompiler.js";
 import { generateTsFromPugAst } from "../tsgen/pugTsGenerator.js";
 import { validateGeneratedTs } from "../validate/validateGeneratedTs.js";
 import { Logger } from "../utils/Logger.js";
-import { glob } from "glob";
 
 import { printWithLineNumbers } from "../utils/utils.js";
 import { ContractParseError } from "../errors/ContractParseError.js";
@@ -47,27 +46,25 @@ program
       if (options.watch) {
         Logger.info(`Watching directory ${resolved} for .pug changes...`);
 
-        const watcher = chokidar.watch("**/*.pug", {
-          
-          ignoreInitial: false,
+        const watcher = chokidar.watch(resolved, {
+          // ignoreInitial: false,     // default is false — no need to include
+          ignored: (filePath, stats) => stats?.isFile() ? !filePath.endsWith(".pug") : false
         });
         watcher.on("ready", () => {
           Logger.info("✅ chokidar is ready and watching for changes.");
         });
         watcher.on("all", (event, file) => {
-          const fullPath = path.join(resolved, file);
-          Logger.info(`Detected ${event} in ${file}, re-checking...`);
-          //runTypeCheck(fullPath, projectPath);
+          
+          Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
+          // to only check if event is add or change
+          if (event === "add" || event === "change") {
+            runTypeCheck(file, projectPath);
+          }
         });
         watcher.on("error", (err) => {
           Logger.error(`chokidar error: ${err}`);
         });
-        // manually run once using glob
-        const files = glob.sync("**/*.pug", { cwd: resolved });
-        for (const file of files) {
-            const fullPath = path.join(resolved, file);
-            runTypeCheck(fullPath, projectPath);
-        }
+
 
       } else {
         const files = fs
@@ -99,7 +96,7 @@ function runTypeCheck(pugPath: string, projectPath: string) {
     const ast = precompilePug(pugPath, pugSource);
     const tsResult = generateTsFromPugAst(ast, contract);
 
-    Logger.info(`✅ Generated TypeScript for ${path.basename(pugPath)}:`);
+    Logger.debug(`✅ Generated TypeScript for ${path.basename(pugPath)}:`);
     // printWithLineNumbers(tsResult.tsSource);
 
     // Logger.info("✅ Starting type-check validation...");

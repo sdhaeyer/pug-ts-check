@@ -27,7 +27,7 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], op
     const diagnostics = project.getPreEmitDiagnostics();
 
     if (diagnostics.length === 0) {
-        Logger.info("✅ Type checking passed with ts-morph!");
+        Logger.debug("✅ Type checking passed with ts-morph!");
         return diagnostics;
     }
 

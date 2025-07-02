@@ -84,7 +84,19 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
             case "Block":
                 if (node.nodes) node.nodes.forEach(visit);
                 break;
-
+            case "Conditional":
+                addLine(`if (${node.test}) {`, map);
+                indentLevel++;
+                if (node.consequent) visit(node.consequent);
+                indentLevel--;
+                if (node.alternate) {
+                    addLine(`} else {`, map);
+                    indentLevel++;
+                    visit(node.alternate);
+                    indentLevel--;
+                }
+                addLine("}", map);
+                break;
             default:
                 // handle other node types
                 addLine(`// TODO handle ${node.type}`, map);
