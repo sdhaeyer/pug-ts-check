@@ -25,11 +25,20 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
     const lineMap: MappedLine[] = [];
 
 
-    function addLine(src: string, Map: MappedLine = { line: 0, file: "file/path/not/given" }) {
-        Logger.debug(`Adding line: ${src} at ${Map.file}:${Map.line}`);
-        const indentation = indentString.repeat(indentLevel);
-        tsSource += indentation + src + "\n";
-        lineMap.push({ line: Map.line, file: Map.file });
+    function addLine(src: string, map: MappedLine = { lineNumber: 0, file: "file/path/not/given" }, oriSrc?: string) {
+        const lines = src.split(/\r?\n/);
+        for (const line of lines) {
+
+            const currentIndex = lineMap.length;
+
+            Logger.debug(`[${currentIndex}] Adding line: "${line}" - From: ${map.file}:${map.lineNumber} :oriSrc : "${oriSrc || ""}"`);
+            const indentation = indentString.repeat(indentLevel);
+            tsSource += indentation + line + "\n";
+
+            lineMap.push(map);
+        }
+
+
 
     }
 
@@ -39,19 +48,24 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
 
     // Add contract imports
     for (const imp of contract.absoluteImports) {
-        addLine(imp, { line: 0, file: "contract" });
+        addLine(imp, { lineNumber: 0, file: "contract" });
     }
 
    
-    addLine(`export function render(locals: ${contract.rawExpects}) {`, { line: contract.atExpectLine, file: contract.pugPath });
+    addLine(`export function render(locals: ${contract.rawExpects}) {`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
     indentLevel++;
-    addLine(`const { ${Object.keys(contract.virtualExpects).join(", ")} } = locals;`, { line: contract.atExpectLine, file: contract.pugPath });
+    addLine(`const { ${Object.keys(contract.virtualExpects).join(", ")} } = locals;`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
 
     function visit(node: PugAstNode) {
         if (!node) return;
-        Logger.debug(`Visiting node type: ${node.type}`, node);
+        Logger.debug(`Visiting node type: ${node.type}`);
 
-        const map = { line: node.line ?? 0, file: node.filename || "unknown.pug" };
+        if (!node.filename) {
+            Logger.warn(`Node ${node.type} at line ${node.line} has no filename. This may cause issues with line mapping.`);
+            node.filename = "unknown.pug";  // fallback filename
+        }
+
+        const map = { lineNumber: node.line ?? 0, file: node.filename };
         switch (node.type) {
             case "Mixin":
                 if (node.block) {
@@ -74,7 +88,14 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
                 addLine("}", map);
                 break;
             case "Code":
-                addLine(`console.log(${node.val});`, map);
+                
+                if (node.buffer) {
+                    // means an = expression
+                    addLine(`console.log(${node.val});`, map);
+                } else {
+                    // means a - code block
+                    addLine(`${node.val}`, map);
+                }
                 break;
             case "Text":
                 // treat interpolations as logs
@@ -115,5 +136,10 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
     indentLevel--;
     addLine("}");
     
+    Logger.debug("Linemap : ");
+    for (const [index, mapEntry] of lineMap.entries()) {
+        Logger.debug(`LineMap[${index}]: ${mapEntry.file}:${mapEntry.lineNumber}`);
+    }
+
     return { tsSource, lineMap };
 }

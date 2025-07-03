@@ -1,4 +1,4 @@
-type LogLevel = "silent" | "info" | "debug" | "warn";
+type LogLevel = "silent" | "info" | "debug" | "warn" | "init";
 
 function formatArgs(args: any[]) {
   const foundMulti = args.some(
@@ -23,6 +23,11 @@ class LoggerClass {
   info(...args: any[]) {
     if (this.shouldLog("info")) {
       console.log(`\x1b[36m[INFO]\x1b[0m`, ...formatArgs(args));
+    }
+  }
+  init(...args: any[]) {
+    if (this.shouldLog("init")) {
+      console.log(`\x1b[36m[INIT]\x1b[0m`, ...formatArgs(args));
     }
   }
 

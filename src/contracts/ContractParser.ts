@@ -16,10 +16,10 @@ import { getTsProject } from "../validate/projectCache.js";
  */
 export function parseContractComments(pugPath: string, pugSource?: string): ParsedContract {
     Logger.debug("Parsing contract annotations in Pug...");
-    let projectPath = config.projectPath;
+    
     var errors:ParseError[] = [];
     
-    const tmpDir = path.join(projectPath, ".tmp");
+    const tmpDir = path.join(config.projectPath, config.tmpDir);
 
    
     
@@ -51,7 +51,7 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
                 if (!ruleText.startsWith("import type")) {
 
                     Logger.warn(`⚠️  Consider using 'import type' to avoid runtime imports in contracts: ${ruleText}`);
-                    Logger.warn(`⚠️  Found in ${pugPath}:${currentLine} on line ${currentLine}`);
+                    Logger.warn(` Found in ${pugPath}:${currentLine} on line ${currentLine}`);
                 }
                 rawImports.push(ruleText);
             }
@@ -90,8 +90,12 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
 
 
     // store to .tmp under projectPath
+    Logger.debug("Creating temporary directory for virtual file...");
+    Logger.debug(`Temporary directory: ${tmpDir}`);
     fs.mkdirSync(tmpDir, { recursive: true });
+
     const tmpPath = path.join(tmpDir, "VirtualExpectFile.ts");
+    Logger.debug(`Temporary file path: ${tmpPath}`);
     fs.writeFileSync(tmpPath, fileSource, "utf8");
 
 
@@ -99,18 +103,33 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
     const project = getTsProject();
 
 
+    Logger.debug(`Loading virtual file for type-checking: ${tmpPath}`);
     const sourceFile = project.addSourceFileAtPath(tmpPath);
-    sourceFile.refreshFromFileSystemSync();
+    Logger.debug(`Loaded virtual file for type-checking: ${tmpPath}`);
 
+    Logger.debug("Refreshing source file from file system...");
+    sourceFile.refreshFromFileSystemSync();
+    Logger.debug("Source file refreshed.");
+
+
+    Logger.debug("Checking for @expect type alias...");
     const typeAlias = sourceFile.getTypeAliasOrThrow("ExpectContract");
+    Logger.debug("Found @expect type alias, checking type...");
+
+    Logger.debug(`Getting type of @expect alias: ${typeAlias}`);
     const type = typeAlias.getType();
+    Logger.debug("Got type of @expect alias, checking if it is an object...");
 
     if (!type.isObject()) {
         errors.push(new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, atExpectLine));
         // not throwing cause i think dingske also handles it.throw new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, atExpectLine);
     }
 
+    Logger.debug("Getting properties of @expect type alias...");
     const props = type.getProperties();
+    Logger.debug(`Found ${props.length} properties in @expect type.`);
+
+    Logger.debug("Parsing properties of @expect type...");
     const virtualExpects: Record<string, string> = {};
 
     for (const prop of props) {
@@ -133,6 +152,7 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
     // TODO: warn about unused imported types
     // TODO: support shared references/transitive validation
 
+    Logger.debug("Parsed contract annotations successfully.");
     return { rebasedImports, virtualExpects, rawImports, rawExpects, absoluteImports,errors, atExpectLine, pugPath};
 }
 

@@ -1,7 +1,7 @@
 import { ParseError } from "../errors/ParseError";
 
 export interface MappedLine {
-    line: number;
+    lineNumber: number;
     file: string;
     debugInfo?: string; // optional debug info for better error messages
 }

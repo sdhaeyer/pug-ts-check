@@ -11,7 +11,7 @@ import { ParseError } from "../errors/ParseError.js";
 
 
 
-export function precompilePug(filePath: string, fileSource?: string): PugAst {
+export function precompilePug(filePath: string, fileSource?: string, caller?: string): PugAst {
     const absolutePath = path.resolve(filePath);
     Logger.debug(`Precompiling Pug file: ${absolutePath}`);
 
@@ -50,11 +50,15 @@ export function precompilePug(filePath: string, fileSource?: string): PugAst {
             Logger.debug(`Extending: ${parentPath}`);
 
             Logger.debug(`Generating AST for parent...`);
+
+            if (!fs.existsSync(parentPath)) {
+                throw new ParseError(`Precompile: Pug file not found at path: ${parentPath}`, currentFile, node.line??-1);
+            }
             const parentAst = precompilePug(parentPath);
             Logger.debug(`Generated AST for parent: ${parentPath}`);
 
-            // patch parent AST with filename info
-            addFilenameToAst(parentAst, parentPath);
+            // patch parent AST with filename info // niet nodig want gebeurt in the precompile
+            // addFilenameToAst(parentAst, parentPath);
 
             // collect blocks in parent
             const parentBlocks: Record<string, PugAstNode> = {};
@@ -84,6 +88,10 @@ export function precompilePug(filePath: string, fileSource?: string): PugAst {
                 Logger.debug(`Collecting child block: ${n.type} with name: ${n.name || "N/A"}`);
                 if (n.type === "NamedBlock" && n.name) {
                     Logger.debug("Found child block:", n);
+                    Logger.debug(`Child block name: ${n.name}`);
+                    if (!n.filename) {
+                        Logger.warn(`Chilblock file name not knwo should be knwon no? `);
+                    }
                     childBlocks[n.name] = n;
                 }
             });
@@ -95,10 +103,10 @@ export function precompilePug(filePath: string, fileSource?: string): PugAst {
                 if (childBlocks[blockName]) {
                     // override the parent's block nodes
                     parentBlocks[blockName].nodes = childBlocks[blockName].nodes;
-
+                    // parentBlocks[blockName].filename = absolutePath; // attach filename info to the parent block
                     // attach filename info to the overriding child nodes
                     childBlocks[blockName].nodes?.forEach((child: any) => {
-                        child.filename = currentFile;
+                        child.filename = absolutePath;
                     });
                 }
             }
@@ -150,16 +158,17 @@ export function precompilePug(filePath: string, fileSource?: string): PugAst {
 export function addFilenameToAst(node: PugAstNode, currentFile: string) {
     if (!node) return;
 
+    // ok maybe later maybe todo .. .add parents , so that if i dont find the filename i can walk up the tree
     node.filename = currentFile;
+    if(node.block) {
+        addFilenameToAst(node.block, currentFile);
+    }
 
     if (node.nodes && Array.isArray(node.nodes)) {
         node.nodes.forEach((child: PugAstNode) => addFilenameToAst(child, currentFile));
     }
 
-    if (node.block && node.block.nodes) {
-        node.block.nodes.forEach((child: PugAstNode) => addFilenameToAst(child, currentFile));
-    }
-
+    // dont know if below is neccesary ... 
     // handle attributes on tags:
     if (node.attrs && Array.isArray(node.attrs)) {
         node.attrs.forEach((attr: any) => {
@@ -168,6 +177,30 @@ export function addFilenameToAst(node: PugAstNode, currentFile: string) {
             }
         });
     }
+
+    if (node.alternate) addFilenameToAst(node.alternate, currentFile);
+    if (node.consequent) addFilenameToAst(node.consequent, currentFile);
+
+    if (node.whens && Array.isArray(node.whens)) {
+        for (const when of node.whens) {
+            if (when.block) addFilenameToAst(when.block, currentFile);
+        }
+    }
+
+    if (node.nodes && Array.isArray(node.nodes)) {
+        node.nodes.forEach(child => addFilenameToAst(child, currentFile));
+    }
+
+    
+    if (node.attributeBlocks && Array.isArray(node.attributeBlocks)) {
+        node.attributeBlocks.forEach(block => {
+            if (typeof block === "object" && block !== null) {
+                block.filename = currentFile;
+            }
+        });
+    }
+
+
 }
 
 export function stringifyPugAst(ast: PugAstNode, indent: string = ""): string {

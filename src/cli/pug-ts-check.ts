@@ -8,7 +8,7 @@ import { reScanAll, runTypeCheck } from "../runner/runTypeCheck.js";
 
 
 import { config } from "../config/config.js";
-import { loadPugConfig, setPugConfigFromUser } from "../config/loadPugConfig.js";
+import { loadPugConfig } from "../config/loadPugConfig.js";
 import { getTsProject } from "../validate/projectCache.js";
 
 const program = new Command();
@@ -17,12 +17,13 @@ program
   .name("pug-ts-check")
   .description("Type-check Pug templates against TypeScript contracts")
   .version("0.1.0")
-  .argument("<path>", "path to a .pug file or a directory")
+  .argument("[path]", "path to a .pug file or a directory")
   .option("--verbose", "enable verbose output")
   .option("--silent", "disable most logs")
   .option("--watch", "watch a directory for changes and re-run")
   .option("--projectPath <path>", "TypeScript project path")
   .option("--tmpDir <dir>", "temporary dir")
+  .option("--pugTsConfig <pug.tsconfig.json>", "path to Pug TypeScript config file")
   .action((targetPath, options) => {
     if (options.silent) {
       Logger.setLevel("silent");
@@ -31,8 +32,17 @@ program
     } else {
       Logger.setLevel("info");
     }
-    
-    setPugConfigFromUser();
+
+    Logger.debug("Showing debug lines ");
+    const pugTsConfigPath =options.pugTsConfig  || "pug.tsconfig.json";
+    if(options.pugTsConfig ){
+      Logger.info(`Using custom Pug TypeScript config at: ${pugTsConfigPath}`);
+    }
+
+   
+    loadPugConfig(pugTsConfigPath)
+    Logger.debug(config)
+     
     if (options.tmpDir) {
       config.tmpDir = options.tmpDir;
     }
@@ -62,8 +72,9 @@ program
     
     
       if (options.watch) {
-        Logger.info(`Watching directories:\n - ${config.pugPaths.join("\n - ")}`);
-        const watcher = chokidar.watch(config.pugPaths, {
+        const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
+        Logger.info(`Watching directories:\n - ${pugPaths.join("\n - ")}`);
+        const watcher = chokidar.watch(pugPaths, {
           ignored: (filePath, stats) => {
             if (!stats?.isFile()) return false;
 
@@ -74,9 +85,12 @@ program
         });
         watcher.on("ready", () => {
           //console.clear();
-          Logger.info("✅ Ready and watching for changes.");
-          // Initial scan
+          Logger.info("✅ Watcher Ready");
+          Logger.info("Starting initial scan of Pug files...");
+
+          // Initial scanproject.finishedData.ThreadLength
           reScanAll(watcher);
+          Logger.info("✅ Initial scan complete. Watching for changes...");
         });
 
         watcher.on("all", (event, file) => {

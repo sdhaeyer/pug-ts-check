@@ -17,15 +17,15 @@ export function runTypeCheck(pugPath: string):ParsedContract | undefined {
     const pugSource = fs.readFileSync(pugPath, "utf8");
     
     const contract = parseContractComments(pugPath, pugSource);
-
+    
     const ast = precompilePug(pugPath, pugSource);
     const tsResult = generateTsFromPugAst(ast, contract);
 
-    Logger.debug(`✅ Generated TypeScript for ${path.basename(pugPath)}:`);
+    Logger.debug(`✅ Generated TypeScript for ${pugPath}:`);
 
-    let diags = validateGeneratedTs(tsResult.tsSource, tsResult.lineMap);
+    let diags = validateGeneratedTs(tsResult.tsSource, tsResult.lineMap, pugPath);
     if (diags.length > 0) {
-      Logger.error(`❌ ${path.basename(pugPath)} failed type-check!`);
+      Logger.error(`❌ ${pugPath} --failed type-check!`);
     } else {
       Logger.info(`✅ ${path.basename(pugPath)} passed type-check!`);
     }
@@ -44,14 +44,28 @@ const seen = new Set<string>();
 
 
 export function reScanAll(watcher?: FSWatcher) {
+  const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
 
-  for (const pugRoot of config.pugPaths) {
-    const pugFiles = glob.sync("**/*.pug", {
-      cwd: pugRoot,
-      absolute: true,
-    });
+  for (const pugRoot of pugPaths) {
+    let pugFiles: string[] = [];
+
+    if (!fs.statSync(pugRoot).isDirectory()) {
+      pugFiles = [pugRoot];
+    } else {
+      pugFiles = glob.sync("**/*.pug", {
+        cwd: pugRoot,
+        absolute: true,
+      });
+    }
+
+    
+    
+    if (pugFiles.length === 0) {
+      Logger.warn(`No Pug files found in ${pugRoot}, pug paths in config are relative to projectPath: ${config.projectPath}`);
+    }
     for (const pugFile of pugFiles) {
       var contract = runTypeCheck(pugFile);
+      
       if( watcher && contract) {
         for (const absImport of contract.absoluteImports) {
           const importPath = normalizeImportPath(extractImportPath(absImport));
@@ -63,7 +77,13 @@ export function reScanAll(watcher?: FSWatcher) {
 
         }
       }
+      if (contract?.errors && contract.errors.length > 0) {
+        Logger.error(`❌ Errors found in ${pugFile}:`);
+        Logger.error(contract.errors);
+        break;
+      }
     }
+    Logger.info(` Type-check completed for all Pug files in ${pugRoot}`);
   }
 
 }
