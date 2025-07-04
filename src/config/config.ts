@@ -3,4 +3,5 @@ export const config = {
   projectPath: ".",
   logLevel: "info" as "info" | "debug" | "silent",
   pugPaths: [] as string[], // multiple roots
+  viewsRoot: "./src/views", // default views root
 };

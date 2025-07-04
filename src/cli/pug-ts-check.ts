@@ -4,12 +4,14 @@ import chokidar from "chokidar";
 import path from "node:path";
 import fs from "node:fs";
 import { Logger } from "../utils/Logger.js";
-import { reScanAll, runTypeCheck } from "../runner/runTypeCheck.js";
+import { scanAll, scanFile } from "../scanner/scanfiles.js";
 
 
 import { config } from "../config/config.js";
 import { loadPugConfig } from "../config/loadPugConfig.js";
 import { getTsProject } from "../validate/projectCache.js";
+import { dependencyGraph } from "../cache/dependencyGraph.js";
+import { logParseError } from "../logDiagnostics/logDiagnostics.js";
 
 const program = new Command();
 
@@ -36,7 +38,7 @@ program
     Logger.debug("Showing debug lines ");
     const pugTsConfigPath =options.pugTsConfig  || "pug.tsconfig.json";
     if(options.pugTsConfig ){
-      Logger.info(`Using custom Pug TypeScript config at: ${pugTsConfigPath}`);
+      Logger.init(`Using custom Pug TypeScript config at: ${pugTsConfigPath}`);
     }
 
    
@@ -66,14 +68,14 @@ program
       const stat = fs.statSync(resolved);
       if (stat.isFile()) {
         singleFile = true;
-        Logger.info(`Running type-check for single file: ${resolved}`);
+        Logger.init(`Running type-check for single file: ${resolved}`);
       }
     }
     
     
       if (options.watch) {
         const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
-        Logger.info(`Watching directories:\n - ${pugPaths.join("\n - ")}`);
+        Logger.init(`Watching directories:\n - ${pugPaths.join("\n - ")}`);
         const watcher = chokidar.watch(pugPaths, {
           ignored: (filePath, stats) => {
             if (!stats?.isFile()) return false;
@@ -85,16 +87,17 @@ program
         });
         watcher.on("ready", () => {
           //console.clear();
-          Logger.info("✅ Watcher Ready");
-          Logger.info("Starting initial scan of Pug files...");
+          Logger.init("✅ Watcher Ready");
+          Logger.init("Starting initial scan of Pug files...");
 
           // Initial scanproject.finishedData.ThreadLength
-          reScanAll(watcher);
-          Logger.info("✅ Initial scan complete. Watching for changes...");
+          scanAll(watcher);
+          Logger.init("✅ Initial scan complete. Watching for changes...");
         });
 
         watcher.on("all", (event, file) => {
           // console.clear();
+          console.log("***************************************************");
           Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
           // to only check if event is add or change
           if (event === "add" || event === "change") {
@@ -105,7 +108,16 @@ program
                 Logger.debug(`Refreshed ${file} in ts-morph project`);
               }
             }
-            reScanAll(watcher);
+            // Logger.info(dependencyGraph.graph);
+            const {contract, errors} = scanFile(file);
+            logParseError(errors, file);
+            dependencyGraph.getDependentsOf(file).forEach((pugPath) => {
+              const {contract, errors} = scanFile(pugPath);
+              logParseError(errors, pugPath);
+
+              Logger.info(`Re-scanned ${pugPath}`);
+            });
+            // reScanAll(watcher);
           }
          
         });
@@ -115,7 +127,7 @@ program
         
 
       } else {
-        reScanAll();
+        scanAll(undefined);
       }
       
    

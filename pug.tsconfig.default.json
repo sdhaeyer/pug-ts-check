@@ -2,5 +2,6 @@
   "tmpDir": ".tmp",
   "projectPath": "./",
   "pugPaths": ["./src/views", "./tests/pugs"],
-  "logLevel": "info"
+  "logLevel": "info",
+  "viewsRoot": "./views" 
 }

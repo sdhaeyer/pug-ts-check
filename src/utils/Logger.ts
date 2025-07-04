@@ -27,7 +27,7 @@ class LoggerClass {
   }
   init(...args: any[]) {
     if (this.shouldLog("init")) {
-      console.log(`\x1b[36m[INIT]\x1b[0m`, ...formatArgs(args));
+      console.log(`\x1b[33m[INIT]\x1b[0m`, ...formatArgs(args));
     }
   }
 
@@ -46,6 +46,7 @@ class LoggerClass {
       console.log(`\x1b[35m[DEBUG]\x1b[0m`, ...formatArgs(args));
     }
   }
+  
 }
 
 export const Logger = new LoggerClass();

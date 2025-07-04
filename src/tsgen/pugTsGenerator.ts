@@ -81,7 +81,13 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
                 }
                 break;
             case "Each":
-                addLine(`for (const ${node.val} of ${node.obj}) {`, map);
+                if (node.key) {
+                    // key present = index
+                    addLine(`for (const [${node.key}, ${node.val}] of ${node.obj}.entries()) {`, map);
+                } else {
+                    // no key
+                    addLine(`for (const ${node.val} of ${node.obj}) {`, map);
+                }
                 indentLevel++;
                 if (node.block) visit(node.block);
                 indentLevel--;

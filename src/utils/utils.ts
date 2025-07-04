@@ -1,6 +1,7 @@
 import path from "node:path";
 import {config} from "../config/config.js";
 import { Logger } from "./Logger.js";
+import fs from "node:fs";
 
 export function printWithLineNumbers(source: string) {
   source.split("\n").forEach((line, idx) => {
@@ -89,4 +90,33 @@ export function absoluteImport(
   Logger.debug(`Rebased import line: ${toReturn}`);
   // substitute back
   return toReturn
+}
+
+
+
+
+export function extractImportPath(importLine: string): string | null {
+  const match = importLine.match(/from\s+["']([^"']+)["']/);
+  return match ? match[1] : null;
+}
+
+export function normalizeImportPath(importPath: string| null): string {
+  if (!importPath) {
+    return "";
+  }
+  let resolved = importPath;
+
+  // strip .js if present
+  if (resolved.endsWith(".js")) {
+    resolved = resolved.slice(0, -3);
+  }
+
+  // resolve to absolute .ts file (assuming source is .ts)
+  if (fs.existsSync(resolved + ".ts")) {
+    resolved += ".ts";
+  } else if (fs.existsSync(resolved + ".d.ts")) {
+    resolved += ".d.ts";
+  }
+
+  return path.normalize(resolved);
 }

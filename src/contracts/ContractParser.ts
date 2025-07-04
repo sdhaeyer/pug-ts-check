@@ -5,16 +5,18 @@ import fs from "node:fs";
 
 import { ParseError } from "../errors/ParseError.js";
 import type {  ParsedContract } from "../types/types.js"; // fix if needed
-import { absoluteImport, rebaseImport } from "../utils/utils.js";
+import { absoluteImport, normalizeImportPath, rebaseImport } from "../utils/utils.js";
 import { config } from "../config/config.js";
 
 import { getTsProject } from "../validate/projectCache.js";
+import { extractImportPath } from "../utils/utils.js";
+import { dependencyGraph } from "../cache/dependencyGraph.js";
 
 
 /**
  * Parse //@import and //@expect from pug source
  */
-export function parseContractComments(pugPath: string, pugSource?: string): ParsedContract {
+export function parseContractComments(pugPath: string, pugSource?: string): {contract:ParsedContract | undefined, errors: ParseError[]} {
     Logger.debug("Parsing contract annotations in Pug...");
     
     var errors:ParseError[] = [];
@@ -26,7 +28,11 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
     if (!pugSource) {
 
         if (!fs.existsSync(pugPath)) {
-            throw new ParseError(`ContractParseError: Pug file not found`, pugPath, 1);
+            errors.push(new ParseError(`ContractParseError: Pug file not found`, pugPath, 1));
+            return {contract:undefined, errors};
+
+            
+
         }
         pugSource = fs.readFileSync(pugPath, "utf8");
     }
@@ -39,7 +45,7 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
     
     const rawImports: ParsedContract["rawImports"] = [];
 
-    let rawExpects: string | null = null;
+    let rawExpects: string | undefined = undefined;
 
     for (const line of lines) {
         const trimmed = line.trim();
@@ -57,8 +63,8 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
             }
 
             if (ruleText.startsWith("expect")) {
-                if (rawExpects !== null) {
-                    throw new ParseError("ContractParseError: Multiple //@expect blocks found; only one allowed.", pugPath, currentLine);
+                if (!!rawExpects) {
+                    errors.push(new ParseError("ContractParseError: Multiple //@expect blocks found; only one allowed.", pugPath, currentLine));
                 }
                 const expectMatch = ruleText.match(/expect\s+(.*)/);
                 if (expectMatch) {
@@ -71,7 +77,8 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
     }
 
     if (!rawExpects) {
-        throw new ParseError("No expect block found. Please add a //@ expect { ... } comment to your Pug file.", pugPath, 0);
+        errors.push(new ParseError("ContractParseError: No //@expect block found; please add one to your Pug file.", pugPath, 0));
+        
     }
 
     const rebasedImports: ParsedContract["rebasedImports"] = [];
@@ -84,6 +91,12 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
     // build the virtual file exactly with user-provided imports
     let fileSource = "";
     for (const importLine of absoluteImports) {
+        const importPath = normalizeImportPath(extractImportPath(importLine));
+         if (!fs.existsSync(importPath)) {
+            errors.push(new ParseError(`ContractParseError: Import file not found: ${importPath}`, pugPath, atExpectLine));
+            continue; // skip this import if file does not exist
+         }
+         dependencyGraph.add(pugPath, importPath);
         fileSource += importLine + "\n";
     }
     fileSource += `type ExpectContract = ${rawExpects};\n`;
@@ -121,8 +134,9 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
     Logger.debug("Got type of @expect alias, checking if it is an object...");
 
     if (!type.isObject()) {
-        errors.push(new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, atExpectLine));
-        // not throwing cause i think dingske also handles it.throw new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, atExpectLine);
+        if (atExpectLine!= -1){
+            errors.push(new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, atExpectLine));
+        }
     }
 
     Logger.debug("Getting properties of @expect type alias...");
@@ -141,8 +155,7 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
         const symbol = typeAtLoc.getSymbol();
         if (!symbol) {
             errors.push(new ParseError(`ContractParseError: Unknown type referenced in @expect: '${typeAtLoc.getText()}'`, pugPath, atExpectLine));
-            // not throwing cause i think dingske also handles it.
-            // throw new ParseError(`ContractParseError: Unknown type referenced in @expect: '${typeAtLoc.getText()}'`, pugPath, atExpectLine);
+            
         }
 
         virtualExpects[name] = typeAtLoc.getText();
@@ -153,7 +166,7 @@ export function parseContractComments(pugPath: string, pugSource?: string): Pars
     // TODO: support shared references/transitive validation
 
     Logger.debug("Parsed contract annotations successfully.");
-    return { rebasedImports, virtualExpects, rawImports, rawExpects, absoluteImports,errors, atExpectLine, pugPath};
+    return { contract: { rebasedImports, virtualExpects, rawImports, rawExpects, absoluteImports,  atExpectLine, pugPath }, errors };
 }
 
 
