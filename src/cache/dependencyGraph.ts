@@ -37,17 +37,28 @@ class DependencyGraph {
   }
 
   /**
-   * Get all files that depend on a given file
+   * Get all files that depend on a given file ///todo haven't checked the code on accuracy
    */
   getDependentsOf(file: string): string[] {
-    file = path.posix.normalize(file.replace(/\\/g, "/"))
-    const dependents: string[] = [];
-    for (const [f, dependencies] of this.graph.entries()) {
-      if (dependencies.has(file)) {
-        dependents.push(f);
-      }
+    file = path.posix.normalize(file.replace(/\\/g, "/"));
+
+    const found = new Set<string>();
+    const stack = [file];
+
+    while (stack.length > 0) {
+        const current = stack.pop()!;
+        for (const [f, dependencies] of this.graph.entries()) {
+            if (dependencies.has(current) && !found.has(f)) {
+                found.add(f);
+                stack.push(f);
+            }
+        }
     }
-    return dependents;
+
+    // remove the original file itself if present
+    found.delete(file);
+
+    return Array.from(found);
   }
 }
 

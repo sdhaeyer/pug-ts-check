@@ -14,14 +14,14 @@ import { dependencyGraph } from "../cache/dependencyGraph.js";
 
 
 
-export function precompilePug(filePath: string, fileSource?: string, caller?: string): {ast: PugAst| undefined, errors: ParseError[]} {
+export function precompilePug(filePath: string, fileSource?: string, caller?: string): { ast: PugAstNode | undefined, errors: ParseError[] } {
     const errors: ParseError[] = [];
     let ast: PugAst | undefined = undefined;
     const absolutePath = path.resolve(filePath);
-    
+
     try {
 
-        
+
         Logger.debug(`Precompiling Pug file: ${absolutePath}`);
 
         let source = "";
@@ -54,180 +54,178 @@ export function precompilePug(filePath: string, fileSource?: string, caller?: st
 
         let includes: string[] = []
 
-        function visit(node: PugAstNode, currentFile: string, headAst: PugAstNode) {
-            if (!node) return;
-            Logger.debug(`Visiting node type: ${node.type} at ${currentFile.split(path.sep).pop()}:${node.line}`);
-            // eigenlijk moeten we elke node afgaan als er een extend is ...., dan moeten alle includes geprepend worden aan de nodes van de parent ast. 
+        function flatten(node: PugAstNode): PugAstNode {
+
+            if (!node.filename) {
+                Logger.warn(`Flattening node without filename: ${node.type} at ${node.line}`);
+                throw new ParseError(`Flattening node without filename: ${node.type} at ${node.line}`, absolutePath, node.line ?? -1);
+            }
+            if (node.nodes && Array.isArray(node.nodes)) {
+                for (const child of node.nodes) {
+                    if (!child.filename) {
+                        Logger.warn(`Flattening node with child without filename: ${node.filename} at ${node.line}`);
+                        throw new ParseError(`Flattening node with child without filename`, node.filename, node.line ?? -1);
+
+                    }
+                }
+            }
+
+
+            Logger.debug(`Flattening node type: ${node.type} at ${node.filename}:${node.line}`);
+            // eigenlijk moeten we elke node afgaan als er een extend is ...., dan moeten alle includes geprepend worden aan de nodes van de parent ast.
 
             if (node.nodes && Array.isArray(node.nodes)) {
-                var hasExtend =false
+
+                
+                let extendBlock: PugAstNode | undefined;
                 for (const child of node.nodes) {
+
                     if (child.type === "Extends") {
-                        hasExtend = true;
+                        
+                        extendBlock = child;
                         break;
                     }
                 }
-                if (hasExtend) {
-                    for (let i = node.nodes.length - 1; i >= 0; i--) {
-                        const child = node.nodes[i];
-                        if (child.type === "Include") {
-                        // resolve include path
-                        const includePath = resolvePugIncludePath(currentFile, child.file.path);
-                        includes.push(includePath);
-                        Logger.debug(`Found include page that extends: ${includePath}`);
+                if (extendBlock) {
+                    Logger.debug(`Found extends block in ${node.filename} at line ${node.line}`);
+                    const masterPath = resolvePugIncludePath(node.filename, extendBlock.file.path);
+                    dependencyGraph.add(node.filename, masterPath); // add the dependency edge
 
-                        // remove this node from the AST
-                        node.nodes.splice(i, 1);
-                        Logger.debug(`Removed include node from AST to prevent duplicate processing.`);
+                    const childPath = node.filename;
+
+                    // eigenlijk zouden w ehier alle niet neame blocks moeten verzamelen , en misschien ondertussen ook de andere ... 
+                    // die in een array steken ... ( de andere)
+                    const otherBlocks: PugAstNode[] = [];
+                    const childBlocks: Record<string, PugAstNode> = {};
+
+
+                    for (const child of node.nodes) {
+                        if (child.type === "NamedBlock" && child.name) {
+                            childBlocks[child.name] = child;
+                        } else if (child.type !== "Extends") {
+
+                            // add to other blocks
+                            otherBlocks.push(child);
                         }
                     }
+
+
+
+                    Logger.debug(`Generating AST for parent...`);
+
+                    if (!fs.existsSync(masterPath)) {
+                        throw new ParseError(`Precompile: Pug file not found at path: ${masterPath}`, node.filename, node.line ?? -1);
+                    }
+                    const { ast: masterAst, errors: masterErrors } = precompilePug(masterPath);
+                    if (masterErrors.length > 0) {
+                        errors.push(...masterErrors);
+                    }
+
+                    if (!masterAst) {
+                        throw new ParseError(`Precompile: Failed to precompile parent Pug file: ${masterPath}`, node.filename, node.line ?? -1);
+                    }
+
+                    function collectNamedBlocks(node: PugAstNode, store: Record<string, PugAstNode>) {
+                        if (!node) return;
+
+                        if ((node.type === "Block" || node.type === "NamedBlock") && node.name) {
+                            store[node.name] = node;
+                        }
+                        if (node.nodes) {
+                            node.nodes.forEach((child: PugAstNode) => collectNamedBlocks(child, store));
+                        }
+                        if (node.block) {
+                            collectNamedBlocks(node.block, store);
+                        }
+                    }
+
+                    // collect named blocks in parent
+                    const mappedMasterBlocks: Record<string, PugAstNode> = {};
+                    collectNamedBlocks(masterAst, mappedMasterBlocks);
+                    Logger.debug(`Collected ${Object.keys(mappedMasterBlocks).length} blocks from parent.`);
+                    Logger.debug(`Parent blocks: ${Object.keys(mappedMasterBlocks).join(", ")}`);
+
+
+                    // in eached named block in the mast ast ... we will look if we find a child and then put the childs in there ... 
+                    for (const blockName of Object.keys(mappedMasterBlocks)) {
+                        if (childBlocks[blockName]) {
+                            mappedMasterBlocks[blockName].nodes = childBlocks[blockName].nodes;
+                        }
+                    }
+
+                    // we will also add the otherblocks
+
+                    if (otherBlocks.length > 0) {
+                        Logger.debug(`Adding ${otherBlocks.length} other blocks to parent AST.`);
+                        if (masterAst.nodes) {
+                            masterAst.nodes.unshift(...otherBlocks);
+                        } else {
+                            masterAst.nodes = otherBlocks;
+                        }
+                        // Add a comment node to indicate these blocks came from here
+                        const commentNode = {
+                            type: "Comment",
+                            val: `Added ${otherBlocks.length} blocks from ${childPath}`,
+                            filename: childPath,
+                            line: 1,
+                            column: 1
+                        };
+                        masterAst.nodes.unshift(commentNode);
+                    }
+
+
+                    return flatten(masterAst); // visit the new AST to process it
+
                 }
             }
+
             if (node.type === "Include") {
-
+                Logger.debug(`Found include in ${node.filename}:${node.line}`);
                 // resolve include path
-                const includePath = resolvePugIncludePath(currentFile, node.file.path);
-                includes.push(includePath);
-                // we will add also the dependencies at the end ... 
-                // we know now that is is not a root include ... we will expend it or so add it to
-                // we have to handle includes at top level
+                const includePath = resolvePugIncludePath(node.filename, node.file.path);
+                // now add the includes ... 
+
+                Logger.debug(`START - Precompiling include: ${includePath}`);
+                const { ast: includeAst, errors: includeErrors } = precompilePug(includePath);
+                Logger.debug(`END - Precompiling include: ${includePath}`);
+                errors.push(...includeErrors);
+                dependencyGraph.add(node.filename, includePath); // add the dependency edge
+
+                if (!includeAst) {
+                    errors.push(new ParseError(`Precompile: Failed to precompile included Pug file: ${includePath}`, node.filename, -1));
+                    return node; // return the original node if include fails
+
+                } else {
+                    Logger.debug(`Setting node to flattened precompiled node`);
+                    return flatten(includeAst); // replace the current node with the include AST
+                }
             }
 
-            if (node.type === "Extends") {
-                let parentPath = resolvePugIncludePath(currentFile, node.file.path);
-
-
-                Logger.debug(`Extending: ${parentPath}`);
-
-                Logger.debug(`Generating AST for parent...`);
-
-                if (!fs.existsSync(parentPath)) {
-                    throw new ParseError(`Precompile: Pug file not found at path: ${parentPath}`, currentFile, node.line ?? -1);
-                }
-                const { ast: parentAst, errors: parentErrors } = precompilePug(parentPath);
-                if (parentErrors.length > 0) {
-                    errors.push(...parentErrors);
-                }
-
-                Logger.debug(`Generated AST for parent: ${parentPath}`);
-
-                if (!parentAst) {
-                    throw new ParseError(`Precompile: Failed to precompile parent Pug file: ${parentPath}`, currentFile, node.line ?? -1);
-                }
-                // patch parent AST with filename info // niet nodig want gebeurt in the precompile
-                // addFilenameToAst(parentAst, parentPath);
-
-                // collect blocks in parent
-                const parentBlocks: Record<string, PugAstNode> = {};
-                var indentLevel = 0;
-                var indentString = "  "; // two spaces
-                function collectParentBlocks(node: PugAstNode, store: Record<string, PugAstNode>) {
-                    indentLevel++;
-                    const indentation = indentString.repeat(indentLevel);
-                    if (!node) return;
-                    Logger.debug(`${indentation} ppp ${node.type} <${node.name || "N/A"}> `);
-                    //console.log("currennode: ", node)
-                    if ((node.type === "Block" || node.type === "NamedBlock") && node.name) {
-                        Logger.debug(`${indentation} Found parent block: `, node);
-                        store[node.name] = node;
-                    }
-                    if (node.nodes) {
-                        node.nodes.forEach((child: PugAstNode) => collectParentBlocks(child, store));
-                    }
-                    if (node.block) {
-                        collectParentBlocks(node.block, store);
-                    }
-                    indentLevel--;
-                }
-                Logger.debug(`Collecting parent blocks`);
-                collectParentBlocks(parentAst, parentBlocks);
-                Logger.debug(`Collected ${Object.keys(parentBlocks).length} blocks from parent.`);
-                Logger.debug(`Parent blocks: ${Object.keys(parentBlocks).join(", ")}`);
-
-                // collect blocks from the child (the one doing the extend)
-                const childBlocks: Record<string, PugAstNode> = {};
-                // only pick block nodes at the *root* of the child
-                if (headAst.nodes && Array.isArray(headAst.nodes)) {
-                    Logger.debug(`Collecting child blocks from node type: ${headAst.type} with name: ${headAst.name || "N/A"}`);
-                    headAst.nodes.forEach((n: PugAstNode) => {
-                        Logger.debug(`Collecting child block: ${n.type} with name: ${n.name || "N/A"}`);
-                        if (n.type === "NamedBlock" && n.name) {
-                            Logger.debug("Found child block!!");
-                            Logger.debug(`Child block name: ${n.name}`);
-                            if (!n.filename) {
-                                Logger.warn(`Child block file name not known should be known no? `);
-                            }
-                            childBlocks[n.name] = n;
-                        }
-                    });
-                    Logger.debug(`Collected ${Object.keys(childBlocks).length} blocks from child.`);
-                    Logger.debug(`Child blocks: ${Object.keys(childBlocks).join(", ")}`);
-                }
-                Logger.debug(`Replacing parent blocks with child overrides if they exist`);
-                // replace parent blocks with child overrides
-                for (const blockName of Object.keys(parentBlocks)) {
-                    if (childBlocks[blockName]) {
-                        Logger.debug(`Replacing parent block "${blockName}" with child block.`);
-                        // override the parent's block nodes
-                        parentBlocks[blockName].nodes = childBlocks[blockName].nodes;
-                        childBlocks[blockName].nodes?.forEach((child: any) => {
-                            child.filename = absolutePath;
-                        });
-                    }
-                }
-                dependencyGraph.add(absolutePath, parentPath); // add the dependency edge
-                ast = parentAst; // replace the current AST with the extended one and start all over ... 
-                visit(parentAst, parentPath,parentAst); // visit the new AST to process it
-                return;
-            }
 
             // default traversal
             if (node.nodes) {
-                node.nodes.forEach(child => visit(child, currentFile, headAst));
+                node.nodes = node.nodes.map(child => flatten(child));
             }
             if (node.block) {
-                visit(node.block, currentFile, headAst);
+                node.block = flatten(node.block);
             }
 
+            return node; // return the modified node
 
         }
 
-        visit(ast, absolutePath, ast);
-
-
-        // now add the includes ... 
-        for (const includePath of includes) {
-            Logger.debug(`Processing include: ${includePath}`);
-            const {ast:includeAst, errors:includeErrors} = precompilePug(includePath);
-            errors.push(...includeErrors);
-            dependencyGraph.add(absolutePath, includePath); // add the dependency edge
-
-
-            if (!includeAst) {
-                errors.push(new ParseError(`Precompile: Failed to precompile included Pug file: ${includePath}`, absolutePath, -1));
-                return { ast: undefined, errors };
-                
-            }
-            addFilenameToAst(includeAst, includePath);
-
-            // merge the include AST into the main AST
-            if (ast.nodes) {
-                ast.nodes = [...includeAst.nodes, ...(ast.nodes || [])];
-            } else {
-                ast.nodes = includeAst.nodes;
-            }
-        }
+        const resp = flatten(ast);
 
 
 
 
-        return {ast, errors};
+        return { ast: resp, errors };
 
     } catch (err) {
         if (err instanceof ParseError) {
             errors.push(err);
-            return { ast:undefined, errors };
- 
+            return { ast: undefined, errors };
+
         } else {
             Logger.error("❌ XYZ-- General error during parsing:", err);
             let pe = new ParseError(`Precompile: General error during parsing: ${err}`, absolutePath, -1);
@@ -248,7 +246,7 @@ export function addFilenameToAst(node: PugAstNode, currentFile: string) {
 
     // ok maybe later maybe todo .. .add parents , so that if i dont find the filename i can walk up the tree
     node.filename = currentFile;
-    if(node.block) {
+    if (node.block) {
         addFilenameToAst(node.block, currentFile);
     }
 
@@ -279,7 +277,7 @@ export function addFilenameToAst(node: PugAstNode, currentFile: string) {
         node.nodes.forEach(child => addFilenameToAst(child, currentFile));
     }
 
-    
+
     if (node.attributeBlocks && Array.isArray(node.attributeBlocks)) {
         node.attributeBlocks.forEach(block => {
             if (typeof block === "object" && block !== null) {
@@ -297,44 +295,67 @@ export function stringifyPugAst(ast: PugAstNode, indent: string = ""): string {
     function visit(node: PugAstNode, currentIndent: string) {
         if (!node) return;
         //result += `node type: ${node.type} \n`
-
+        
+        
+        result += `${currentIndent}`;
+        result += `[${node.type}]`;
         switch (node.type) {
+            
+
             case "Tag":
-                result += `${currentIndent}${node.name}`;
+                result += `{node.name}`;
                 if (node.attrs && node.attrs.length > 0) {
                     const attrs = node.attrs.map((a: any) => `${a.name}=${a.val}`).join(" ");
                     result += `(${attrs})`;
                 }
-                result += "\n";
+                result += "";
                 break
             case "Text":
-                result += `${currentIndent}| ${node.val}\n`;
+                result += `| ${node.val}`;
                 break
             case "Code":
-                result += `${currentIndent}- ${node.val}\n`;
+                result += `- ${node.val}`;
                 break
             case "Each":
-                result += `${currentIndent}each ${node.val} in ${node.obj}\n`;
+                result += `each ${node.val} in ${node.obj}`;
                 break
             case "Block":
                 if (node.name) {
-                    result += `${currentIndent}block ${node.name}\n`;
+                    result += `block ${node.name}`;
                 } else {
                     // result += `${currentIndent}block\n`;
                 }
                 break
             case "Mixin":
-                result += `${currentIndent}mixin ${node.name}(${(node.args || "").trim()})\n`;
+                result += `mixin ${node.name}(${(node.args || "").trim()})`;
                 break;
             case "NamedBlock":
-                result += `${currentIndent}block ${node.name}\n`;
+                result += `block ${node.name}`;
                 break;
             case "Comment":
-                result += `${currentIndent}// ${node.val}\n`;
+                result += `// ${node.val}`;
+                break;
+            case "Conditional":
+                result += `if (${node.test})`;
+                if (node.consequent) visit(node.consequent, currentIndent + "  ");
+                if (node.alternate) {
+                    result += `\n${currentIndent}else`;
+                    visit(node.alternate, currentIndent + "  ");
+                }
+                break;
+            case "Include":
+                if (node.file?.path) {
+                    result += `include ${node.file?.path}`;
+                } else {
+                    result += `include (unknown path)`;
+                }
                 break;
             default:
-                result += `${currentIndent}// (logger)TODO: handle node type ${node.type}\n`;
+                result += `// (logger)TODO: handle node type ${node.type}`;
         }
+        const relPath = path.relative(process.cwd(), node.filename || "");
+        // result += `\n${currentIndent}(${relPath}:${node.line})`;
+        result += "\n"
         if (node.block) visit(node.block, currentIndent + "  ");
         if (node.nodes) {
             node.nodes.forEach(child => visit(child, currentIndent + "  "));
@@ -352,12 +373,12 @@ export function stringifyPugAst(ast: PugAstNode, indent: string = ""): string {
  * - absolute pug paths (starting with '/'), relative to viewsRoot
  * - relative paths, relative to currentFile
  */
-export function resolvePugIncludePath( currentFile: string, pugPath: string ): string {
+export function resolvePugIncludePath(currentFile: string, pugPath: string): string {
 
     // maybe to ad multiple viewroots ... 
-    let viewsRoot = path.join(config.projectPath,   config.viewsRoot) ;
+    let viewsRoot = path.join(config.projectPath, config.viewsRoot);
 
-    
+
     if (pugPath.startsWith("/")) {
         // absolute pug path, relative to views root
         return path.join(viewsRoot, pugPath);

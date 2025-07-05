@@ -29,7 +29,7 @@ export interface PugAstNode {
     [key: string]: any;
 }
 
-export interface PugAst {
+export interface PugAst extends PugAstNode {
     type: "Block";
     nodes: PugAstNode[];
 }
