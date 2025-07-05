@@ -17,6 +17,7 @@ export interface ParsedContract {
 
     atExpectLine: number; // line number where //@expect was found, for error reporting
     pugPath: string; // path to the Pug file, for error reporting
+
 }
 
 

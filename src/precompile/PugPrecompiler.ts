@@ -54,17 +54,42 @@ export function precompilePug(filePath: string, fileSource?: string, caller?: st
 
         let includes: string[] = []
 
-        function visit(node: PugAstNode, currentFile: string) {
+        function visit(node: PugAstNode, currentFile: string, headAst: PugAstNode) {
             if (!node) return;
             Logger.debug(`Visiting node type: ${node.type} at ${currentFile.split(path.sep).pop()}:${node.line}`);
+            // eigenlijk moeten we elke node afgaan als er een extend is ...., dan moeten alle includes geprepend worden aan de nodes van de parent ast. 
 
+            if (node.nodes && Array.isArray(node.nodes)) {
+                var hasExtend =false
+                for (const child of node.nodes) {
+                    if (child.type === "Extends") {
+                        hasExtend = true;
+                        break;
+                    }
+                }
+                if (hasExtend) {
+                    for (let i = node.nodes.length - 1; i >= 0; i--) {
+                        const child = node.nodes[i];
+                        if (child.type === "Include") {
+                        // resolve include path
+                        const includePath = resolvePugIncludePath(currentFile, child.file.path);
+                        includes.push(includePath);
+                        Logger.debug(`Found include page that extends: ${includePath}`);
+
+                        // remove this node from the AST
+                        node.nodes.splice(i, 1);
+                        Logger.debug(`Removed include node from AST to prevent duplicate processing.`);
+                        }
+                    }
+                }
+            }
             if (node.type === "Include") {
 
                 // resolve include path
                 const includePath = resolvePugIncludePath(currentFile, node.file.path);
                 includes.push(includePath);
                 // we will add also the dependencies at the end ... 
-
+                // we know now that is is not a root include ... we will expend it or so add it to
                 // we have to handle includes at top level
             }
 
@@ -94,37 +119,43 @@ export function precompilePug(filePath: string, fileSource?: string, caller?: st
 
                 // collect blocks in parent
                 const parentBlocks: Record<string, PugAstNode> = {};
-                function collectBlocks(node: PugAstNode, store: Record<string, PugAstNode>) {
+                var indentLevel = 0;
+                var indentString = "  "; // two spaces
+                function collectParentBlocks(node: PugAstNode, store: Record<string, PugAstNode>) {
+                    indentLevel++;
+                    const indentation = indentString.repeat(indentLevel);
                     if (!node) return;
-                    Logger.debug(`Collecting blocks from node type: ${node.type} node name: ${node.name || "N/A"} `);
+                    Logger.debug(`${indentation} ppp ${node.type} <${node.name || "N/A"}> `);
                     //console.log("currennode: ", node)
                     if ((node.type === "Block" || node.type === "NamedBlock") && node.name) {
-                        Logger.debug(`Found parent block: `, node);
+                        Logger.debug(`${indentation} Found parent block: `, node);
                         store[node.name] = node;
                     }
                     if (node.nodes) {
-                        node.nodes.forEach((child: PugAstNode) => collectBlocks(child, store));
+                        node.nodes.forEach((child: PugAstNode) => collectParentBlocks(child, store));
                     }
                     if (node.block) {
-                        collectBlocks(node.block, store);
+                        collectParentBlocks(node.block, store);
                     }
+                    indentLevel--;
                 }
-                collectBlocks(parentAst, parentBlocks);
+                Logger.debug(`Collecting parent blocks`);
+                collectParentBlocks(parentAst, parentBlocks);
                 Logger.debug(`Collected ${Object.keys(parentBlocks).length} blocks from parent.`);
                 Logger.debug(`Parent blocks: ${Object.keys(parentBlocks).join(", ")}`);
 
                 // collect blocks from the child (the one doing the extend)
                 const childBlocks: Record<string, PugAstNode> = {};
                 // only pick block nodes at the *root* of the child
-                if (node.nodes && Array.isArray(node.nodes)) {
-                    Logger.debug(`Collecting child blocks from node type: ${node.type} with name: ${node.name || "N/A"}`);
-                    node.nodes.forEach((n: PugAstNode) => {
+                if (headAst.nodes && Array.isArray(headAst.nodes)) {
+                    Logger.debug(`Collecting child blocks from node type: ${headAst.type} with name: ${headAst.name || "N/A"}`);
+                    headAst.nodes.forEach((n: PugAstNode) => {
                         Logger.debug(`Collecting child block: ${n.type} with name: ${n.name || "N/A"}`);
                         if (n.type === "NamedBlock" && n.name) {
-                            Logger.debug("Found child block:", n);
+                            Logger.debug("Found child block!!");
                             Logger.debug(`Child block name: ${n.name}`);
                             if (!n.filename) {
-                                Logger.warn(`Chilblock file name not knwo should be knwon no? `);
+                                Logger.warn(`Child block file name not known should be known no? `);
                             }
                             childBlocks[n.name] = n;
                         }
@@ -132,36 +163,36 @@ export function precompilePug(filePath: string, fileSource?: string, caller?: st
                     Logger.debug(`Collected ${Object.keys(childBlocks).length} blocks from child.`);
                     Logger.debug(`Child blocks: ${Object.keys(childBlocks).join(", ")}`);
                 }
+                Logger.debug(`Replacing parent blocks with child overrides if they exist`);
                 // replace parent blocks with child overrides
                 for (const blockName of Object.keys(parentBlocks)) {
                     if (childBlocks[blockName]) {
+                        Logger.debug(`Replacing parent block "${blockName}" with child block.`);
                         // override the parent's block nodes
                         parentBlocks[blockName].nodes = childBlocks[blockName].nodes;
-                        // parentBlocks[blockName].filename = absolutePath; // attach filename info to the parent block
-                        // attach filename info to the overriding child nodes
                         childBlocks[blockName].nodes?.forEach((child: any) => {
                             child.filename = absolutePath;
                         });
                     }
                 }
                 dependencyGraph.add(absolutePath, parentPath); // add the dependency edge
-                node = parentAst; // replace the current AST with the extended one
-                visit(node, parentPath); // visit the new AST to process it
+                ast = parentAst; // replace the current AST with the extended one and start all over ... 
+                visit(parentAst, parentPath,parentAst); // visit the new AST to process it
                 return;
             }
 
             // default traversal
             if (node.nodes) {
-                node.nodes.forEach(child => visit(child, currentFile));
+                node.nodes.forEach(child => visit(child, currentFile, headAst));
             }
             if (node.block) {
-                visit(node.block, currentFile);
+                visit(node.block, currentFile, headAst);
             }
 
 
         }
 
-        visit(ast, absolutePath);
+        visit(ast, absolutePath, ast);
 
 
         // now add the includes ... 
@@ -302,7 +333,7 @@ export function stringifyPugAst(ast: PugAstNode, indent: string = ""): string {
                 result += `${currentIndent}// ${node.val}\n`;
                 break;
             default:
-                result += `${currentIndent}// TODO: handle node type ${node.type}\n`;
+                result += `${currentIndent}// (logger)TODO: handle node type ${node.type}\n`;
         }
         if (node.block) visit(node.block, currentIndent + "  ");
         if (node.nodes) {

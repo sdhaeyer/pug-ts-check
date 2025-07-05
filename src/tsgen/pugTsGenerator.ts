@@ -44,14 +44,14 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
 
     addLine("// Generated TypeScript from Pug AST");
 
-    
+
 
     // Add contract imports
     for (const imp of contract.absoluteImports) {
         addLine(imp, { lineNumber: 0, file: "contract" });
     }
 
-   
+
     addLine(`export function render(locals: ${contract.rawExpects}) {`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
     indentLevel++;
     addLine(`const { ${Object.keys(contract.virtualExpects).join(", ")} } = locals;`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
@@ -94,7 +94,7 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
                 addLine("}", map);
                 break;
             case "Code":
-                
+
                 if (node.buffer) {
                     // means an = expression
                     addLine(`console.log(${node.val});`, map);
@@ -105,11 +105,17 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
                 break;
             case "Text":
                 // treat interpolations as logs
-                addLine(`console.log(\`${node.val}\`);`, map);
+                addLine(`console.log(\`${node.val}\`); // case text`, map);
                 break;
             case "Tag":
-                // ignore tags except maybe push text from text children
-                if (node.block) visit(node.block);
+                if (node.name === "script") {
+                    // do not visit children of script tags, or handle separately
+                    Logger.debug("Skipping script block");
+
+                } else {
+                    // ignore tags except maybe push text from text children
+                    if (node.block) visit(node.block);
+                }
                 break;
 
             case "NamedBlock":
@@ -141,7 +147,7 @@ export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { t
     visit(ast);
     indentLevel--;
     addLine("}");
-    
+
     Logger.debug("Linemap : ");
     for (const [index, mapEntry] of lineMap.entries()) {
         Logger.debug(`LineMap[${index}]: ${mapEntry.file}:${mapEntry.lineNumber}`);

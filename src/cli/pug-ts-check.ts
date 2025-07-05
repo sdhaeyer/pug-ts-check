@@ -11,7 +11,10 @@ import { config } from "../config/config.js";
 import { loadPugConfig } from "../config/loadPugConfig.js";
 import { getTsProject } from "../validate/projectCache.js";
 import { dependencyGraph } from "../cache/dependencyGraph.js";
-import { logParseError } from "../logDiagnostics/logDiagnostics.js";
+import { logParseError, logSnippet } from "../logDiagnostics/logDiagnostics.js";
+import { parsedResultStore } from "../cache/parsedResult.js";
+import { lastScannedFile } from "../cache/lastScannedFile.js";
+
 
 const program = new Command();
 
@@ -27,6 +30,8 @@ program
   .option("--tmpDir <dir>", "temporary dir")
   .option("--pugTsConfig <pug.tsconfig.json>", "path to Pug TypeScript config file")
   .action((targetPath, options) => {
+    
+
     if (options.silent) {
       Logger.setLevel("silent");
     } else if (options.verbose) {
@@ -44,7 +49,10 @@ program
    
     loadPugConfig(pugTsConfigPath)
     Logger.debug(config)
-     
+    
+    parsedResultStore.load();
+    
+
     if (options.tmpDir) {
       config.tmpDir = options.tmpDir;
     }
@@ -96,6 +104,7 @@ program
         });
 
         watcher.on("all", (event, file) => {
+          file = path.resolve(file);
           // console.clear();
           console.log("***************************************************");
           Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
@@ -108,8 +117,9 @@ program
                 Logger.debug(`Refreshed ${file} in ts-morph project`);
               }
             }
-            // Logger.info(dependencyGraph.graph);
-            const {contract, errors} = scanFile(file);
+            
+            const { errors} = scanFile(file);
+                        
             logParseError(errors, file);
             dependencyGraph.getDependentsOf(file).forEach((pugPath) => {
               const {contract, errors} = scanFile(pugPath);
@@ -124,7 +134,50 @@ program
         watcher.on("error", (err) => {
           Logger.error(`chokidar error: ${err}`);
         });
-        
+        // Add this after watcher.on("error", ...) — still inside options.watch block:
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        process.stdin.setEncoding("utf8");
+
+        process.stdin.on("data", (key: string) => {
+          if (key === "r") {
+            console.log("manual rescan!");
+            scanAll(watcher);
+          }
+          if (key === "s") {
+            console.log("summary!");
+            parsedResultStore.logSummary();
+          }
+          if (key === "e") {
+            console.log("error log!");
+            parsedResultStore.logErrors();
+          }
+          if (key === "f") {
+            console.log("full log!");
+            parsedResultStore.logFull();
+          }
+          if (key === "g") {
+            console.log("generating ts from last file");
+            if (lastScannedFile.path) {
+              const { contract, errors, rawGeneratedTs } = scanFile(lastScannedFile.path);
+              logSnippet(0, 500, rawGeneratedTs?.split(/\r?\n/) || []);
+            } else {
+              console.error("No last scanned file found.");
+            }
+            
+          }
+          if (key === "\u0003") {
+            console.log("Exiting... & saving results");
+            parsedResultStore.save();
+            
+            process.exit();
+          }
+
+        });
+        process.on("SIGINT", () => {
+          // Handle Ctrl+C
+          
+        });
 
       } else {
         scanAll(undefined);
