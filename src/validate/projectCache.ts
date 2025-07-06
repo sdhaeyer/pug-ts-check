@@ -10,7 +10,7 @@ export function getTsProject(): Project {
         const tsConfigFilePath = path.join(config.projectPath, "tsconfig.json");
 
 
-        Logger.info("Creating new TypeScript project instance... Only doing this once... might take some time");
+        Logger.info("Creating new TypeScript project instance...");
         Logger.debug(`Using tsconfig at: ${tsConfigFilePath}`);
 
         _cachedProject = new Project({

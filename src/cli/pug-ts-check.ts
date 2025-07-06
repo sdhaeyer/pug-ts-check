@@ -51,6 +51,7 @@ program
     loadPugConfig(pugTsConfigPath)
     Logger.debug(config)
 
+    Logger.init("Loading Pug ParsedResults from disk...");
     parsedResultStore.load();
 
 
@@ -88,7 +89,10 @@ program
 
     if (options.watch) {
       const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
-      Logger.init(`Watching directories:\n - ${pugPaths.join("\n - ")}`);
+      Logger.init("Watching directories:");
+      pugPaths.forEach((p) => {
+        Logger.init(`- ${p}`);
+      });
       const watcher = chokidar.watch(pugPaths, {
         ignored: (filePath, stats) => {
           if (!stats?.isFile()) return false;
@@ -101,7 +105,7 @@ program
       watcher.on("ready", () => {
         //console.clear();
         Logger.init("✅ Watcher Ready");
-        Logger.init("Starting initial scan of Pug files...");
+        Logger.init("Starting scan Off changed files...");
 
         // Initial scanproject.finishedData.ThreadLength
         scanAll(watcher);
@@ -190,7 +194,7 @@ program
 
         }
         if (key === "\u0003") {
-          console.log("Exiting... & saving results");
+          Logger.info("Exiting... & saving results");
           parsedResultStore.save();
 
           process.exit();

@@ -17,7 +17,7 @@ import { parsedResultStore } from "../cache/parsedResult.js";
 
 import { lastScannedFile } from "../cache/lastScannedFile.js";
 
-export function scanFile(pugPath: string, watcher: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
+export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
   lastScannedFile.path = pugPath;
 
   dependencyGraph.clear(pugPath);
@@ -151,8 +151,8 @@ export function scanAll(watcher?: FSWatcher): Map<string, ParseError[]> {
 
     }
 
-    Logger.info(` Type-check completed for all Pug files in ${pugRoot}`);
-    Logger.info()
+    Logger.info(` Type-check completed for all changed Pug files in ${pugRoot}`);
+    
 
   }
   return result;

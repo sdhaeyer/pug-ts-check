@@ -1,4 +1,4 @@
-import { log } from "node:console";
+
 import type { ParseError } from "../errors/ParseError.js";
 import type { ParsedContract } from "../types/types.js";
 import { logParseError } from "../logDiagnostics/logDiagnostics.js";
@@ -9,6 +9,7 @@ import type { PersistedData } from "./PersistedData.js";
 import path from "node:path";
 import { config } from "../config/config.js";
 import { scanFile } from "../scanner/scanfiles.js";
+import { Logger } from "../utils/Logger.js";
 
 interface ParseResult {
   errors: ParseError[];
@@ -25,7 +26,7 @@ class ParsedResultStore {
       const stats = fs.statSync(file);
       mtimeMs = stats.mtimeMs;
     } catch (err) {
-      console.warn(`Could not get mtime for ${file}, defaulting to 0`);
+      Logger.warn(`Could not get mtime for ${file}, defaulting to 0`);
     }
     this.results.set(file, { errors, contract, mtimeMs });
   }
@@ -44,7 +45,7 @@ class ParsedResultStore {
 
   logSummary() {
     for (const [file, result] of this.results.entries()) {
-      console.log(`[${file}] -> ${result.errors.length} error(s)`);
+      Logger.info(`[${file}] -> ${result.errors.length} error(s)`);
     }
   }
   logErrors() {
@@ -52,17 +53,17 @@ class ParsedResultStore {
     for (const [file, result] of this.results.entries()) {
       if (result.errors.length > 0) {
         foundErro = true
-        console.log(`[${file}] -> ${result.errors.length} error(s)`);
+        Logger.info(`[${file}] -> ${result.errors.length} error(s)`);
       }
 
     }
     if (!foundErro) {
-      console.log("No errors found in parse results.");
+      Logger.info("No errors found in parse results.");
     }
     
   }
   logFull() {
-    console.log("Full parse results log:");
+    Logger.info("Full parse results log:");
     for (const [file, result] of this.results.entries()) {
       logParseError(result.errors, file);
     }
@@ -89,13 +90,13 @@ class ParsedResultStore {
     };
 
     fs.writeFileSync(filePath, JSON.stringify(persisted, null, 2), "utf8");
-    console.log(`Saved parse results to ${filePath}`);
+    Logger.info(`Saved parse results to ${filePath}`);
   }
 
   load() {
     const filePath = path.join(config.projectPath, "/parseResults.json")
     if (!fs.existsSync(filePath)) {
-      console.warn(`No persisted data found at ${filePath}`);
+      Logger.warn(`No persisted data found at ${filePath}`);
       return;
     }
 
@@ -115,30 +116,30 @@ class ParsedResultStore {
         dependencyGraph.graph.set(file, new Set(deps));
       }
 
-      console.log(`Loaded parse results from ${filePath}`);
+      Logger.info(`Loaded parse results from ${filePath}`);
 
       for (const [file, result] of this.getAll()) {
         try {
           const stats = fs.statSync(file);
           const currentMtime = stats.mtimeMs;
           if (currentMtime !== result.mtimeMs) {
-            console.log(`[STALE] ${file} changed on disk, rescanning...`);
+            Logger.info(`[STALE] ${file} changed on disk, rescanning...`);
             const { contract, errors } = scanFile(file);
             if (errors.length > 0) {
               logParseError(errors, file);
             }else{
-              console.log("No errors found, updated parse result");
+              Logger.info("No errors found, updated parse result");
             }
           } else {
-            console.log(`[FRESH] ${file} is unchanged`);
+            // Logger.info(`[FRESH] ${file} is unchanged`);
           }
         } catch (err) {
-          console.warn(`[MISSING] ${file} does not exist anymore, removing from parse results`);
+          Logger.warn(`[MISSING] ${file} does not exist anymore, removing from parse results`);
           this.clear(file);
         }
       }
     } catch (err) {
-      console.warn(`⚠️ Could not parse persisted data, ignoring: ${err}`);
+      Logger.warn(`⚠️ Could not parse persisted data, ignoring: ${err}`);
     }
   }
 }
