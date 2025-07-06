@@ -1,6 +1,6 @@
 import path, { parse } from "node:path";
 import fs from "node:fs";
-import { parseContractComments } from "../contracts/ContractParser.js";
+import { parseContract } from "../contracts/ContractParser.js";
 import { precompilePug } from "../precompile/PugPrecompiler.js";
 import { generateTsFromPugAst } from "../tsgen/pugTsGenerator.js";
 import { validateGeneratedTs } from "../validate/validateGeneratedTs.js";
@@ -31,7 +31,7 @@ export function scanFile(pugPath: string): { contract: ParsedContract | undefine
     const pugSource = fs.readFileSync(pugPath, "utf8");
 
 
-    const { contract: contract, errors: contractErrors } = parseContractComments(pugPath, pugSource);
+    const { contract: contract, errors: contractErrors } = parseContract(pugPath, pugSource);
     if (!contract || contractErrors.length > 0) {
       errors.push(...contractErrors);
       Logger.debug(`❌ Errors found in ${pugPath}:`);

@@ -16,7 +16,7 @@ import path from "node:path";
  */
 
 
-export function generateTsFromPugAst(ast: PugAst, contract: ParsedContract): { tsSource: string; lineMap: MappedLine[] } {
+export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract): { tsSource: string; lineMap: MappedLine[] } {
 
     let indentLevel = 0;
     const indentString = "  ";  // two spaces

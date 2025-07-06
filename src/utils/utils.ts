@@ -2,6 +2,7 @@ import path from "node:path";
 import {config} from "../config/config.js";
 import { Logger } from "./Logger.js";
 import fs from "node:fs";
+import { get } from "node:http";
 
 export function printWithLineNumbers(source: string) {
   source.split("\n").forEach((line, idx) => {
@@ -13,92 +14,63 @@ export function printWithLineNumbers(source: string) {
 
 
 
-export function rebaseImport(
-  importLine: string,
-  pugFilePath: string,
-  
-): string {
-  
-  // Match only from "...", with quotes
-  const match = importLine.match(/from\s+["']([^"']+)["']/);
-  if (!match) {
-    return importLine; // leave untouched if cannot parse
+export function rebaseImport( importLine: string, pugFilePath: string) : string | undefined {
+
+  const absoluteTarget = getAbsoluteTarget(importLine, pugFilePath);
+  if (!absoluteTarget) {
+    return undefined; // leave untouched if cannot parse
   }
+  const absoluteTmp = path.resolve(config.projectPath, config.tmpDir);
+  // now make a relative path from tmpDir to the target
+  const relativeToTmp = Path.relative(absoluteTmp, absoluteTarget);
+  
+  return replaceTarget(importLine, relativeToTmp);
+}
 
-  const originalPath = match[1];
+export function absoluteImport( importLine: string, pugFilePath: string ): string | undefined {
+  const absoluteTarget = getAbsoluteTarget(importLine, pugFilePath);
+  if (!absoluteTarget) {
+    return undefined; // leave untouched if cannot parse
+  }
+  return replaceTarget(importLine,absoluteTarget);
+}
 
-  // resolve where it *actually* lives
+
+export function getAbsoluteTarget( importLine: string, pugFilePath: string ): string| undefined {
+  const originalPath = getTarget(importLine); // this will normalize slashes
+  if (!originalPath) {
+   return undefined;
+  }
   const pugDir = path.dirname(pugFilePath);
   const absoluteTarget = path.resolve(pugDir, originalPath);
-  const absoluteTmp = path.resolve(config.projectPath, config.tmpDir);
-
-  // now make a relative path from tmpDir to the target
-  const relativeToTmp = path.relative(absoluteTmp, absoluteTarget).replace(/\\/g, "/");
-
-  Logger.debug("Rebasing import:")
-  Logger.debug("originalPath   :", originalPath)
-  Logger.debug("absoluteTarget :", absoluteTarget)
-  Logger.debug("tmpDir         :", config.tmpDir)
-  Logger.debug("relativeToTmp  :", relativeToTmp)
-  Logger.debug("pugFilePath    :", pugFilePath)
   
+  return Path.normalize(absoluteTarget)
+}
 
-  
-
-  const toReturn  = importLine.replace(originalPath, relativeToTmp);
-  Logger.debug(`Rebased import line: ${toReturn}`);
-  // substitute back
-  return toReturn
+export function replaceTarget(importLine: string, newTarget: string): string {
+    return importLine.replace(
+        /(from\s+["'])([^"']+)(["'])/,
+        (_match, prefix, _originalPath, suffix) => `${prefix}${newTarget}${suffix}`
+    );
 }
 
 
 
 
-export function absoluteImport(
-  importLine: string,
-  pugFilePath: string,
-  
-): string {
-  
-  // Match only from "...", with quotes
+
+
+
+export function getTarget( importLine: string ): string | undefined {
   const match = importLine.match(/from\s+["']([^"']+)["']/);
   if (!match) {
-    return importLine; // leave untouched if cannot parse
+    return undefined; // leave untouched if cannot parse
   }
-
   const originalPath = match[1];
 
-  // resolve where it *actually* lives
-  const pugDir = path.dirname(pugFilePath).replace(/\\/g, "/");;
-  const absoluteTarget = path.resolve(pugDir, originalPath).replace(/\\/g, "/");;
-  const absoluteTmp = path.resolve(config.projectPath, config.tmpDir).replace(/\\/g, "/");;
 
-  // now make a relative path from tmpDir to the target
-  const relativeToTmp = path.relative(absoluteTmp, absoluteTarget).replace(/\\/g, "/");
-
-  Logger.debug("Rebasing import:")
-  Logger.debug("originalPath   :", originalPath)
-  Logger.debug("absoluteTarget :", absoluteTarget)
-  Logger.debug("tmpDir         :", config.tmpDir)
-  Logger.debug("relativeToTmp  :", relativeToTmp)
-  Logger.debug("pugFilePath    :", pugFilePath)
-  
-
-  
-
-  const toReturn  = importLine.replace(originalPath, absoluteTarget);
-  Logger.debug(`Rebased import line: ${toReturn}`);
-  // substitute back
-  return toReturn
+  return Path.normalize(originalPath); // normalize to forward slashes
 }
 
-
-
-
-export function extractImportPath(importLine: string): string | null {
-  const match = importLine.match(/from\s+["']([^"']+)["']/);
-  return match ? match[1] : null;
-}
 
 export function normalizeImportPath(importPath: string| null): string {
   if (!importPath) {
@@ -119,4 +91,26 @@ export function normalizeImportPath(importPath: string| null): string {
   }
 
   return path.normalize(resolved);
+}
+
+class Path{
+  static normalize(p: string): string {
+    return p.replace(/\\/g, "/");
+  }
+  
+  static resolve(...paths: string[]): string {
+    return Path.normalize(path.resolve(...paths));
+  }
+  
+  static relative(from: string, to: string): string {
+    return Path.normalize(path.relative(Path.normalize(from), Path.normalize(to)));
+  }
+  
+  static dirname(p: string): string {
+    return Path.normalize(path.dirname(p));
+  }
+  
+  static basename(p: string): string {
+    return path.basename(p);
+  }
 }
