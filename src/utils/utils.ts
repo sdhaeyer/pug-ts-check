@@ -14,62 +14,11 @@ export function printWithLineNumbers(source: string) {
 
 
 
-export function rebaseImport( importLine: string, pugFilePath: string) : string | undefined {
 
-  const absoluteTarget = getAbsoluteTarget(importLine, pugFilePath);
-  if (!absoluteTarget) {
-    return undefined; // leave untouched if cannot parse
-  }
-  const absoluteTmp = path.resolve(config.projectPath, config.tmpDir);
-  // now make a relative path from tmpDir to the target
-  const relativeToTmp = Path.relative(absoluteTmp, absoluteTarget);
-  
-  return replaceTarget(importLine, relativeToTmp);
+export function toAbsolute(inlinePath: string , fromFile: string): string  {
+  return  Path.resolve(Path.dirname(fromFile), inlinePath);
 }
 
-export function absoluteImport( importLine: string, pugFilePath: string ): string | undefined {
-  const absoluteTarget = getAbsoluteTarget(importLine, pugFilePath);
-  if (!absoluteTarget) {
-    return undefined; // leave untouched if cannot parse
-  }
-  return replaceTarget(importLine,absoluteTarget);
-}
-
-
-export function getAbsoluteTarget( importLine: string, pugFilePath: string ): string| undefined {
-  const originalPath = getTarget(importLine); // this will normalize slashes
-  if (!originalPath) {
-   return undefined;
-  }
-  const pugDir = path.dirname(pugFilePath);
-  const absoluteTarget = path.resolve(pugDir, originalPath);
-  
-  return Path.normalize(absoluteTarget)
-}
-
-export function replaceTarget(importLine: string, newTarget: string): string {
-    return importLine.replace(
-        /(from\s+["'])([^"']+)(["'])/,
-        (_match, prefix, _originalPath, suffix) => `${prefix}${newTarget}${suffix}`
-    );
-}
-
-
-
-
-
-
-
-export function getTarget( importLine: string ): string | undefined {
-  const match = importLine.match(/from\s+["']([^"']+)["']/);
-  if (!match) {
-    return undefined; // leave untouched if cannot parse
-  }
-  const originalPath = match[1];
-
-
-  return Path.normalize(originalPath); // normalize to forward slashes
-}
 
 
 export function normalizeImportPath(importPath: string| null): string {
@@ -93,9 +42,10 @@ export function normalizeImportPath(importPath: string| null): string {
   return path.normalize(resolved);
 }
 
-class Path{
+export class Path{
   static normalize(p: string): string {
-    return p.replace(/\\/g, "/");
+    p = path.posix.normalize(p.replace(/\\/g, "/"));
+    return p;
   }
   
   static resolve(...paths: string[]): string {

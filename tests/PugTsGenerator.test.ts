@@ -2,7 +2,7 @@
 
 import fs from "fs";
 import path from "path";
-import { parseContractComments } from "../src/contracts/ContractParser.js";
+import { parseContract } from "../src/contracts/ContractParser.js";
 import { precompilePug, stringifyPugAst } from "../src/precompile/PugPrecompiler.js";
 import { generateTsFromPugAst } from "../src/tsgen/PugTsGenerator.js";
 import { Logger } from "../src/utils/Logger.js";
@@ -12,7 +12,7 @@ try {
     const pugSource = fs.readFileSync(pugPath, "utf8");
     const projectPath = "./tests/example-test-project";
     
-    const parsed = parseContractComments(pugPath,  pugSource, { projectPath });
+    const parsed = parseContract(pugPath,  pugSource);
     // precompile the sample pug to get a flat AST
     const ast = precompilePug(pugPath, pugSource);
     //console.log(stringifyPugAst(ast));

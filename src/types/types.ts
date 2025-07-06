@@ -1,4 +1,7 @@
-import { ParseError } from "../errors/ParseError";
+
+import { Import } from "../utils/import.js";
+import { Logger } from "../utils/Logger.js";
+
 
 export interface MappedLine {
   lineNumber: number;
@@ -6,6 +9,30 @@ export interface MappedLine {
   debugInfo?: string; // optional debug info for better error messages
 }
 
+export class LineMap {
+  public tsSource: string = "";
+
+  public list: MappedLine[] = [];
+  public indentLevel: number = 0;
+  public indentString: string = "  "; // two spaces for indentation
+  
+
+  addLine(src: string, map: MappedLine = { lineNumber: 0, file: "file/path/not/given" }, oriSrc?: string) {
+    const lines = src.split(/\r?\n/);
+    for (const line of lines) {
+      const currentIndex = this.list.length;
+      Logger.debug(`[${currentIndex}] Adding line: "${line}" - From: ${map.file}:${map.lineNumber} :oriSrc : "${oriSrc || ""}"`);
+      const indentation = this.indentString.repeat(this.indentLevel);
+      this.tsSource += indentation + line + "\n";
+
+      this.list.push(map);
+    }
+
+
+
+  }
+
+}
 
 export class ParsedContract {
   pugPath: string; // path to the Pug file, for error reporting
@@ -14,12 +41,7 @@ export class ParsedContract {
   virtualExpects: Record<string, string>;
   atExpectLine: number; // line number where //@expect was found, for error reporting
 
-
-
-  rawImports: Array<string>; // for future use, if we want to track raw imports
-
-  rebasedImports: Array<string>;
-  absoluteImports: Array<string>; // absolute paths for imports, used for type-checking
+  imports: Array<Import>; // list of imports from Pug, for error reporting
 
 
   rawIncludes: Array<string>; // raw includes from Pug, for error reporting
@@ -28,11 +50,10 @@ export class ParsedContract {
   rawExtends: Array<string>; // raw extends from Pug, for error reporting
   extends: Array<string>; // absolute paths of extended Pug files
 
-  importedTsFiles: Array<string>; // absolute paths of imported TypeScript files, for error reporting
-  imports: Array<string>; // list of imported Pug files, for error reporting
 
 
-  constructor(pugPath: string ) {
+
+  constructor(pugPath: string) {
     this.pugPath = pugPath;
 
 
@@ -40,18 +61,14 @@ export class ParsedContract {
     this.virtualExpects = {};
     this.atExpectLine = -1;
 
-    this.rawImports = [];
-    this.rebasedImports = [];
-    this.absoluteImports = [];
-    
+    this.imports = [];
+
     this.rawIncludes = [];
     this.includes = [];
 
     this.rawExtends = [];
     this.extends = [];
 
-    this.importedTsFiles = [];
-    this.imports = [];
   }
 }
 

@@ -5,12 +5,13 @@ import fs from "node:fs";
 
 import { ParseError } from "../errors/ParseError.js";
 import { ParsedContract } from "../types/types.js"; // fix if needed
-import { absoluteImport, normalizeImportPath, rebaseImport } from "../utils/utils.js";
+import { normalizeImportPath, toAbsolute } from "../utils/utils.js";
 import { config } from "../config/config.js";
 
 import { getTsProject } from "../validate/projectCache.js";
-import { extractImportPath } from "../utils/utils.js";
+
 import { dependencyGraph } from "../cache/dependencyGraph.js";
+import { Import } from "../utils/import.js";
 
 
 /**
@@ -21,33 +22,22 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
 
 
     const contract = new ParsedContract(pugPath);
-
-
-    var errors: ParseError[] = [];
+    const errors: ParseError[] = [];
 
     const tmpDir = path.join(config.projectPath, config.tmpDir);
 
 
 
     if (!pugSource) {
-
         if (!fs.existsSync(pugPath)) {
             errors.push(new ParseError(`ContractParseError: Pug file not found`, pugPath, 1));
             return { contract: undefined, errors };
-
-
-
         }
         pugSource = fs.readFileSync(pugPath, "utf8");
     }
 
-
-
     const lines = pugSource.split("\n");
     let currentLine = 1;
-
-
-
 
     for (const line of lines) {
         const trimmed = line.trim();
@@ -61,21 +51,15 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
                     Logger.warn(`⚠️  Consider using 'import type' to avoid runtime imports in contracts: ${ruleText}`);
                     Logger.warn(` Found in ${pugPath}:${currentLine} on line ${currentLine}`);
                 }
-                contract.rawImports.push(ruleText);
-                const rebased = rebaseImport(ruleText, pugPath);
-                if (!rebased) {
-                    errors.push(new ParseError(`ContractParseError: Import rebasing failed for ${ruleText}`, pugPath, currentLine));
-                } else {
-                    contract.rebasedImports.push(rebased);
 
+                let importObject 
+                try {
+                    importObject = Import.fromImportString(ruleText, pugPath, currentLine);
+                    contract.imports.push(importObject);
+                } catch (e) {
+                    errors.push(new ParseError(`ContractParseError: Invalid import line: ${ruleText}`, pugPath, currentLine));
                 }
 
-                const absolute = absoluteImport(ruleText, pugPath);
-                if (!absolute) {
-                    errors.push(new ParseError(`ContractParseError: Import absolute path failed for ${ruleText}`, pugPath, currentLine));
-                } else {
-                    contract.absoluteImports.push(absolute);
-                }
             }
 
             if (ruleText.startsWith("expect")) {
@@ -89,16 +73,19 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
                 }
             }
 
-            // handle raw pug includes and extends
-            if (trimmed.startsWith("include ")) {
-                const includePath = trimmed.slice("include ".length).trim();
-                contract.rawIncludes.push(includePath);
-            }
+        }
 
-            if (trimmed.startsWith("extends ")) {
-                const extendsPath = trimmed.slice("extends ".length).trim();
-                contract.rawExtends.push(extendsPath);
-            }
+        // handle raw pug includes and extends
+        if (trimmed.startsWith("include ")) {
+            const includePath = trimmed.slice("include ".length).trim();
+            contract.rawIncludes.push(includePath);
+            contract.includes.push(toAbsolute(includePath, pugPath));
+        }
+
+        if (trimmed.startsWith("extends ")) {
+            const extendsPath = trimmed.slice("extends ".length).trim();
+            contract.rawExtends.push(extendsPath);
+            contract.extends.push(toAbsolute(extendsPath, pugPath));
         }
         currentLine++;
     }
@@ -108,68 +95,75 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
 
     }
 
-
-
+    for (const depPath of [...contract.includes, ...contract.extends]) {
+        dependencyGraph.add(pugPath, depPath);
+    }
 
     // build the virtual file exactly with user-provided imports
     let fileSource = "";
-    for (const importLine of contract.absoluteImports) {
-        const importPath = normalizeImportPath(extractImportPath(importLine));
+    for (const importObject of contract.imports) {
+        const importPath = normalizeImportPath(importObject.getAbsolutePath());
         if (!fs.existsSync(importPath)) {
-            errors.push(new ParseError(`ContractParseError: Import file not found: ${importPath}`, pugPath, contract.atExpectLine));
+            errors.push(new ParseError(`ContractParseError: Import file not found: ${importPath}`, pugPath, importObject.lineNumber));
             continue; // skip this import if file does not exist
         }
         dependencyGraph.add(pugPath, importPath);
-        fileSource += importLine + "\n";
+        fileSource += importObject.getAbsoluteImportStatement() + "\n";
     }
     fileSource += `type ExpectContract = ${contract.rawExpects};\n`;
-
-
-    // store to .tmp under projectPath
-    Logger.debug("Creating temporary directory for virtual file...");
-    Logger.debug(`Temporary directory: ${tmpDir}`);
-    fs.mkdirSync(tmpDir, { recursive: true });
-
-    const tmpPath = path.join(tmpDir, "VirtualExpectFile.ts");
-    Logger.debug(`Temporary file path: ${tmpPath}`);
-    fs.writeFileSync(tmpPath, fileSource, "utf8");
 
 
     // setup ts-morph
     const project = getTsProject();
 
+    Logger.debug(`Creating virtual TypeScript file`);
+    const virtualFilePath = path.join(tmpDir, "VirtualExpectFile.ts");
+    const sourceFile = project.createSourceFile(virtualFilePath, fileSource, { overwrite: true });
 
 
-    const sourceFile = project.addSourceFileAtPath(tmpPath);
-    sourceFile.refreshFromFileSystemSync();
-
+    Logger.debug("Get TypeAlias or Throw")
     const typeAlias = sourceFile.getTypeAliasOrThrow("ExpectContract");
 
+    Logger.debug("Get Type from TypeAlias This line takes long" );
     const type = typeAlias.getType();
+
+    Logger.debug("Checking if type is an object");
     if (!type.isObject()) {
-        if (atExpectLine != -1) {
-            errors.push(new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, atExpectLine));
+        if (contract.atExpectLine != -1) {
+            errors.push(new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, contract.atExpectLine));
         }
     }
 
 
+    Logger.debug("Get properties from Type");
     const props = type.getProperties();
 
-
+    const knownBuiltins = ["string", "number", "boolean", "Date", "Record", "Array", "any", "unknown", "object", "null", "undefined", "never"]
 
     const virtualExpects: Record<string, string> = {};
-
+    Logger.debug("Parsing properties from @expect...");
     for (const prop of props) {
         const name = prop.getName();
         const declarations = prop.getDeclarations();
         const typeNode = declarations[0];
         const typeAtLoc = prop.getTypeAtLocation(typeNode);
-
-        const symbol = typeAtLoc.getSymbol();
-        if (!symbol) {
-            errors.push(new ParseError(`ContractParseError: Unknown type referenced in @expect: '${typeAtLoc.getText()}'`, pugPath, atExpectLine));
-
+        const typeParts = typeAtLoc.getText().split("|").map(p => p.trim());
+        for (const typeName of typeParts) {
+            Logger.debug(`Checking type: ${typeName} for property: ${name}`);
+            if (knownBuiltins.includes(typeName)) {
+                continue; // ok
+            }
+            const sym = typeAtLoc.getSymbol();
+            if (!sym) {
+                Logger.debug(`No symbol found for type: ${typeName} in property: ${name}`);
+                errors.push(new ParseError(`Unknown type referenced in @expect: '${typeName}'`, pugPath, contract.atExpectLine));
+                
+            }   else{
+                Logger.debug(`Symbol found for type: ${typeName} in property: ${name}`);
+                Logger.debug(sym);
+            }
         }
+       
 
         virtualExpects[name] = typeAtLoc.getText();
     }
@@ -179,7 +173,7 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
     // TODO: support shared references/transitive validation
 
     Logger.debug("Parsed contract annotations successfully.");
-    return { contract: { rebasedImports, virtualExpects, rawImports, rawExpects, absoluteImports, atExpectLine, pugPath }, errors };
+    return { contract, errors };
 }
 
 

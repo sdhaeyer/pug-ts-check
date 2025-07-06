@@ -1,4 +1,5 @@
 import path from "node:path";
+import { Path } from "../utils/utils";
 
 class DependencyGraph {
   /**
@@ -11,8 +12,10 @@ class DependencyGraph {
    * Add a dependency: file depends on dependency
    */
   add(file: string, dependency: string) {
-    file = path.posix.normalize(file.replace(/\\/g, "/"))
-    dependency = path.posix.normalize(dependency.replace(/\\/g, "/"))
+    file = Path.normalize(file);
+    dependency = Path.normalize(dependency);
+
+    
 
     if (!this.graph.has(file)) {
       this.graph.set(file, new Set());
@@ -24,7 +27,7 @@ class DependencyGraph {
    * Remove all dependencies of a given file
    */
   clear(file: string) {
-    file = path.posix.normalize(file.replace(/\\/g, "/"))
+    file = Path.normalize(file);
     this.graph.delete(file);
   }
 
@@ -32,7 +35,7 @@ class DependencyGraph {
    * Get the set of dependencies for a file
    */
   get(file: string): Set<string> | undefined {
-    file = path.posix.normalize(file.replace(/\\/g, "/"))
+    file = Path.normalize(file);
     return this.graph.get(file);
   }
 
@@ -40,7 +43,7 @@ class DependencyGraph {
    * Get all files that depend on a given file ///todo haven't checked the code on accuracy
    */
   getDependentsOf(file: string): string[] {
-    file = path.posix.normalize(file.replace(/\\/g, "/"));
+    file = Path.normalize(file);
 
     const found = new Set<string>();
     const stack = [file];

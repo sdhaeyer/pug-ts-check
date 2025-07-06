@@ -48,7 +48,7 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], or
     return errors;
 }
 
-function diagnosticToParseError(diagnostic: Diagnostic, oriFilePath: string, lineMap: MappedLine[]): ParseError {
+export function diagnosticToParseError(diagnostic: Diagnostic, oriFilePath: string, lineMap: MappedLine[]): ParseError {
     const generatedSourceFile = diagnostic.getSourceFile();
     let pError = new ParseError("Init parseError", oriFilePath, -1, diagnostic);
 

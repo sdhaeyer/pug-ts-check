@@ -4,6 +4,7 @@ import { Logger } from "../utils/Logger";
 import { ParseError } from "../errors/ParseError";
 import path from "node:path";
 import { config } from "../config/config";
+import fs from "node:fs";
 
 export const errorCodeDescriptions: Record<number, string> = {
   2322: "TS2322: Type is not assignable to another type",
@@ -32,6 +33,15 @@ export function logParseError(errors: ParseError[], pugFile: string) {
         console.log("ORIFILE: " + pugFile);
         console.log(`MAP: \x1b[32m${error.pugPath}:${error.pugLine}\x1b[0m`)
         console.log(`Message: \x1b[33m${error.message}\x1b[0m`)
+
+        
+            if (!fs.existsSync(pugFile)) {
+                console.error(`File not found: ${pugFile}`);
+                return;
+            }
+           const pugSource = fs.readFileSync(pugFile, "utf8");
+           
+        logSnippet(error.pugLine, 5, pugSource.split(/\r?\n/));
 
         if (diagnostic) {
             const errorTypeCode = diagnostic.getCode();
