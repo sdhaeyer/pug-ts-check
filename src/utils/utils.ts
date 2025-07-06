@@ -1,8 +1,6 @@
 import path from "node:path";
-import {config} from "../config/config.js";
-import { Logger } from "./Logger.js";
 import fs from "node:fs";
-import { get } from "node:http";
+
 
 export function printWithLineNumbers(source: string) {
   source.split("\n").forEach((line, idx) => {
@@ -40,6 +38,19 @@ export function normalizeImportPath(importPath: string| null): string {
   }
 
   return path.normalize(resolved);
+}
+
+export function extractNames(expectText: string): string[] {
+  return expectText
+    .trim()
+    .slice(1, -1) // remove the surrounding { }
+    .split(",")
+    .map(part => part.trim())
+    .filter(part => part.length > 0)
+    .map(part => {
+      const [name] = part.split(":");
+      return name.trim().replace(/\?$/, "");
+    });
 }
 
 export class Path{

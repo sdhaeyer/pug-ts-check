@@ -35,11 +35,11 @@ export function logParseError(errors: ParseError[], pugFile: string) {
         console.log(`Message: \x1b[33m${error.message}\x1b[0m`)
 
         
-            if (!fs.existsSync(pugFile)) {
-                console.error(`File not found: ${pugFile}`);
+            if (!fs.existsSync(error.pugPath)) {
+                console.error(`File not found: ${error.pugPath}`);
                 return;
             }
-           const pugSource = fs.readFileSync(pugFile, "utf8");
+           const pugSource = fs.readFileSync(error.pugPath, "utf8");
            
         logSnippet(error.pugLine, 5, pugSource.split(/\r?\n/));
 
@@ -87,17 +87,17 @@ export function logParseError(errors: ParseError[], pugFile: string) {
                     const symbol = expressionType.getSymbol();
                     if (expressionType.isClassOrInterface() && symbol) {
 
-                        console.log(`Class or interface: ${symbol.getName()}`);
+                        Logger.error(`Class or interface: ${symbol.getName()}`);
 
                         const declarations = symbol.getDeclarations();
                         declarations.forEach(decl => {
-                            console.log(`At: ${decl.getSourceFile().getFilePath()}:${decl.getStartLineNumber()}`);
+                            Logger.error(`At: ${decl.getSourceFile().getFilePath()}:${decl.getStartLineNumber()}`);
                         });
                         // print its members
                         const properties = expressionType.getProperties();
-                        console.log(`Members:`);
+                        Logger.error(`Members:`);
                         for (const p of properties) {
-                            console.log(`  - ${p.getName()}`);
+                            Logger.error(`  - ${p.getName()}`);
                         }
                     }
 

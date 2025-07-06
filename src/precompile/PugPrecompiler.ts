@@ -71,7 +71,7 @@ export function precompilePug(filePath: string, fileSource?: string, caller?: st
             }
 
 
-            Logger.debug(`Flattening node type: ${node.type} at ${node.filename}:${node.line}`);
+            // Logger.debug(`Flattening node type: ${node.type} at ${node.filename}:${node.line}`);
             // eigenlijk moeten we elke node afgaan als er een extend is ...., dan moeten alle includes geprepend worden aan de nodes van de parent ast.
 
             if (node.nodes && Array.isArray(node.nodes)) {

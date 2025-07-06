@@ -11,15 +11,15 @@ import { glob } from "glob";
 import { FSWatcher } from "chokidar";
 import { ParsedContract } from "../types/types.js";
 import { logParseError } from "../logDiagnostics/logDiagnostics.js";
-import { extractImportPath, normalizeImportPath } from "../utils/utils.js";
+import { normalizeImportPath } from "../utils/utils.js";
 import { dependencyGraph } from "../cache/dependencyGraph.js";
 import { parsedResultStore } from "../cache/parsedResult.js";
 
 import { lastScannedFile } from "../cache/lastScannedFile.js";
 
-export function scanFile(pugPath: string): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
+export function scanFile(pugPath: string, watcher: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
   lastScannedFile.path = pugPath;
-  
+
   dependencyGraph.clear(pugPath);
   parsedResultStore.clear(pugPath);
   const errors: ParseError[] = [];
@@ -30,7 +30,7 @@ export function scanFile(pugPath: string): { contract: ParsedContract | undefine
     //console.info(`Running type-check for Pug file: ${pugPath}`);
     const pugSource = fs.readFileSync(pugPath, "utf8");
 
-
+    Logger.info("Getting contract")
     const { contract: contract, errors: contractErrors } = parseContract(pugPath, pugSource);
     if (!contract || contractErrors.length > 0) {
       errors.push(...contractErrors);
@@ -38,7 +38,10 @@ export function scanFile(pugPath: string): { contract: ParsedContract | undefine
       parsedResultStore.set(pugPath, errors, contract);
       return { contract: undefined, errors };
     }
+    // console.log(`✅ xxxxx Parsed contract for ${pugPath}:`);
+    // console.log(contract)
 
+    Logger.info("Getting AST")
     const { ast: ast, errors: precompileErrors } = precompilePug(pugPath, pugSource);
     errors.push(...precompileErrors);
 
@@ -48,15 +51,30 @@ export function scanFile(pugPath: string): { contract: ParsedContract | undefine
       return { contract: contract, errors };
     }
 
+    Logger.info("Generating TypeScript");
     const tsResult = generateTsFromPugAst(ast, contract);
 
     Logger.debug(`✅ Generated TypeScript for ${pugPath}:`);
 
+    Logger.info("Validating TypeScript");
     let typescriptValidateErrors = validateGeneratedTs(tsResult.tsSource, tsResult.lineMap, pugPath);
 
     errors.push(...typescriptValidateErrors);
 
     parsedResultStore.set(pugPath, errors, contract);
+
+    if (watcher && contract) {
+      for (const imp of contract.imports) {
+        const importPath = normalizeImportPath(imp.getAbsolutePath());
+        if (importPath && !seen.has(importPath)) {
+          watcher.add(importPath);
+          Logger.info(`-> Added import to watcher! ${importPath}`);
+          seen.add(importPath);
+        }
+
+      }
+    }
+
     return { contract, errors, rawGeneratedTs: tsResult.tsSource };
   } catch (err) {
     if (err instanceof ParseError) {
@@ -122,21 +140,11 @@ export function scanAll(watcher?: FSWatcher): Map<string, ParseError[]> {
 
 
       if (needsRescan) {
-        const { contract, errors } = scanFile(pugFile);
+        const { contract, errors } = scanFile(pugFile, watcher);
         logParseError(errors, pugFile);
         result.set(pugFile, errors);
-        
-        if (watcher && contract) {
-          for (const absImport of contract.absoluteImports) {
-            const importPath = normalizeImportPath(extractImportPath(absImport));
-            if (importPath && !seen.has(importPath)) {
-              watcher.add(importPath);
-              Logger.info(`-> Added dependency: ${importPath}`);
-              seen.add(importPath);
-            }
 
-          }
-        }
+
       }
 
 

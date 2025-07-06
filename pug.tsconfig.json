@@ -1,7 +1,7 @@
 {
-  "tmpDir": ".tmp",
-  "projectPath": "./tests/example-test-project",
-  "pugPaths": ["./tests/example-test-project/pug"],
+  "tmpDir": "./src/.tmp",
+  "projectPath": "../../srv/apps/string-portrait/code/",
+  "pugPaths": ["./src/views"],
   "logLevel": "info",
-  "viewsRoot": "./views" 
+  "viewsRoot": "./src/views" 
 }

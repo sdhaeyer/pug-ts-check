@@ -1,0 +1,7 @@
+{
+  "tmpDir": ".tmp",
+  "projectPath": "./tests/example-test-project",
+  "pugPaths": ["./tests/example-test-project/pug"],
+  "logLevel": "info",
+  "viewsRoot": "./views" 
+}

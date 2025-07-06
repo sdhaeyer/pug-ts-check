@@ -41,6 +41,13 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], or
     const errors: ParseError[] = [];
     for (const diag of diagnostics) {
         const pError = diagnosticToParseError(diag, oriFilePath, lineMap);
+        if (!pError) {
+            Logger.error("Failed to convert diagnostic to ParseError");
+            Logger.info(`Diagnostic: ${JSON.stringify(diag.compilerObject, null, 2)}`);
+            Logger.info(`Source! : tsSource: ${tsSource}    `);
+
+            continue;
+        }
         errors.push(pError);
     }
 
@@ -48,13 +55,19 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], or
     return errors;
 }
 
-export function diagnosticToParseError(diagnostic: Diagnostic, oriFilePath: string, lineMap: MappedLine[]): ParseError {
+export function diagnosticToParseError(diagnostic: Diagnostic, oriFilePath: string, lineMap: MappedLine[]): ParseError  {
     const generatedSourceFile = diagnostic.getSourceFile();
     let pError = new ParseError("Init parseError", oriFilePath, -1, diagnostic);
 
     if (!generatedSourceFile) {
         Logger.error("No source file found for diagnostic");
-        pError.message= "No source file found for diagnostic";
+        Logger.info(`Diagnostic: ${JSON.stringify(diagnostic.compilerObject, null, 2)}`);
+        pError.pugLine = -1; // if no source file, set to 0
+        pError.pugPath = oriFilePath; // use original file path
+        pError.message = "No source file found for diagnostic: " + diagnostic.getMessageText();
+
+
+        // pError.message= "No source file found for diagnostic";
         return pError;
         
     }

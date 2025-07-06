@@ -5,6 +5,7 @@ import { Logger } from "../utils/Logger.js";
 import { LineMap, type MappedLine, type ParsedContract } from "../types/types.js";
 import { config } from "../config/config.js";
 import path from "node:path";
+import { extractNames } from "../utils/utils.js";
 
 
 
@@ -31,15 +32,15 @@ export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract):
     for (const impObj of contract.imports) {
         lineMap.addLine(impObj.getAbsoluteImportStatement(), { lineNumber: impObj.lineNumber, file: impObj.file });
     }
-
+   
 
     lineMap.addLine(`export function render(locals: ${contract.rawExpects}) {`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
     lineMap.indentLevel++;
-    lineMap.addLine(`const { ${Object.keys(contract.virtualExpects).join(", ")} } = locals;`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
+    lineMap.addLine(`const { ${extractNames(contract.rawExpects).join(", ")} } = locals;`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
 
     function visit(node: PugAstNode) {
         if (!node) return;
-        Logger.debug(`Visiting node type: ${node.type}`);
+        // Logger.debug(`Visiting node type: ${node.type}`);
 
         if (!node.filename) {
             Logger.warn(`Node ${node.type} at line ${node.line} has no filename. This may cause issues with line mapping.`);
@@ -131,7 +132,7 @@ export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract):
 
     Logger.debug("Linemap : ");
     for (const [index, mapEntry] of lineMap.list.entries()) {
-        Logger.debug(`LineMap[${index}]: ${mapEntry.file}:${mapEntry.lineNumber}`);
+        // Logger.debug(`LineMap[${index}]: ${mapEntry.file}:${mapEntry.lineNumber}`);
     }
 
     const ss = lineMap.tsSource;

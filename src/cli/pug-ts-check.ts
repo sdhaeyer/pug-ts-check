@@ -31,7 +31,7 @@ program
   .option("--tmpDir <dir>", "temporary dir")
   .option("--pugTsConfig <pug.tsconfig.json>", "path to Pug TypeScript config file")
   .action((targetPath, options) => {
-
+    
 
     if (options.silent) {
       Logger.setLevel("silent");
@@ -64,6 +64,10 @@ program
     if (options.pugPaths && options.pugPaths.length > 0) {
       config.pugPaths = options.pugPaths.map((p: string) => path.resolve(p));
     }
+
+    // after gettingh the configs... 
+
+    getTsProject(); // Initialize ts-morph project
 
     var singleFile = false
     if (targetPath) {
@@ -106,36 +110,44 @@ program
 
       watcher.on("all", (event, file) => {
         file = path.resolve(file);
-        // console.clear();
+        
         console.log("***************************************************");
         Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
-        // to only check if event is add or change
+        
         if (event === "add" || event === "change") {
+          let scanDepGraph = false;
           if (file.endsWith(".ts")) {
             const refreshed = getTsProject().getSourceFile(file);
             if (refreshed) {
               refreshed.refreshFromFileSystemSync();
-              Logger.debug(`Refreshed ${file} in ts-morph project`);
+              Logger.info(`Refreshed ${file} in ts-morph project`);
+              scanDepGraph = true;
             }
+          } else {
+            const { errors } = scanFile(file,watcher);
+
+            logParseError(errors, file);
+            if (errors.length == 0) {
+              Logger.info(`✅ Successfully re-scanned ${file}`);
+              scanDepGraph  = true;
+            } else {
+              Logger.error(`❌ Errors found while re-scanning ${file}`);
+              Logger.error(`Not scanning dependency graph`);
+            }
+            
           }
-
-          const { errors } = scanFile(file);
-
-          logParseError(errors, file);
-          if (errors.length == 0) {
-            Logger.info(`✅ Successfully re-scanned ${file}`);
-            Logger.info(`🔍 Scanning dependency graph`);
-            dependencyGraph.getDependentsOf(file).forEach((pugPath) => {
-              const { contract, errors } = scanFile(pugPath);
-              logParseError(errors, pugPath);
-
-              Logger.info(`Re-scanned ${pugPath}`);
-            });
-            Logger.info(`🔍 Scanning dependency graph complete.`);
-          }else{
-            Logger.error(`❌ Errors found while re-scanning ${file}`);
-            Logger.error(`Not scanning dependency graph`);
-          }
+          if (scanDepGraph) {
+              Logger.info(`🔍 Scanning dependency graph`);
+              dependencyGraph.getDependentsOf(file).forEach((pugPath) => {
+                const { contract, errors } = scanFile(pugPath, watcher);
+                logParseError(errors, pugPath);
+                Logger.info(`Re-scanned ${pugPath}`);
+              });
+              Logger.info(`🔍 Scanning dependency graph complete.`);
+            } else{
+              Logger.info(`Skipping dependency graph scan for ${file}`);
+            }
+            
 
 
           // reScanAll(watcher);
@@ -170,7 +182,7 @@ program
         if (key === "g") {
           console.log("generating ts from last file");
           if (lastScannedFile.path) {
-            const { contract, errors, rawGeneratedTs } = scanFile(lastScannedFile.path);
+            const { contract, errors, rawGeneratedTs } = scanFile(lastScannedFile.path, watcher);
             logSnippet(0, 500, rawGeneratedTs?.split(/\r?\n/) || []);
           } else {
             console.error("No last scanned file found.");

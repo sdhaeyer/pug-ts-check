@@ -14,6 +14,7 @@ import { dependencyGraph } from "../cache/dependencyGraph.js";
 import { Import } from "../utils/import.js";
 
 
+
 /**
  * Parse //@import and //@expect from pug source
  */
@@ -52,7 +53,7 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
                     Logger.warn(` Found in ${pugPath}:${currentLine} on line ${currentLine}`);
                 }
 
-                let importObject 
+                let importObject
                 try {
                     importObject = Import.fromImportString(ruleText, pugPath, currentLine);
                     contract.imports.push(importObject);
@@ -97,6 +98,7 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
 
     for (const depPath of [...contract.includes, ...contract.extends]) {
         dependencyGraph.add(pugPath, depPath);
+
     }
 
     // build the virtual file exactly with user-provided imports
@@ -112,60 +114,62 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
     }
     fileSource += `type ExpectContract = ${contract.rawExpects};\n`;
 
+     if (false) {
+        // setup ts-morph
+        const project = getTsProject();
 
-    // setup ts-morph
-    const project = getTsProject();
-
-    Logger.debug(`Creating virtual TypeScript file`);
-    const virtualFilePath = path.join(tmpDir, "VirtualExpectFile.ts");
-    const sourceFile = project.createSourceFile(virtualFilePath, fileSource, { overwrite: true });
-
-
-    Logger.debug("Get TypeAlias or Throw")
-    const typeAlias = sourceFile.getTypeAliasOrThrow("ExpectContract");
-
-    Logger.debug("Get Type from TypeAlias This line takes long" );
-    const type = typeAlias.getType();
-
-    Logger.debug("Checking if type is an object");
-    if (!type.isObject()) {
-        if (contract.atExpectLine != -1) {
-            errors.push(new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, contract.atExpectLine));
-        }
-    }
+        Logger.debug(`Creating virtual TypeScript file`);
+        const virtualFilePath = path.join(tmpDir, "VirtualExpectFile.ts");
+        const sourceFile = project.createSourceFile(virtualFilePath, fileSource, { overwrite: true });
 
 
-    Logger.debug("Get properties from Type");
-    const props = type.getProperties();
+        Logger.debug("Get TypeAlias or Throw")
+        const typeAlias = sourceFile.getTypeAliasOrThrow("ExpectContract");
 
-    const knownBuiltins = ["string", "number", "boolean", "Date", "Record", "Array", "any", "unknown", "object", "null", "undefined", "never"]
+        Logger.debug("Get Type from TypeAlias This line takes long");
+        const type = typeAlias.getType();
 
-    const virtualExpects: Record<string, string> = {};
-    Logger.debug("Parsing properties from @expect...");
-    for (const prop of props) {
-        const name = prop.getName();
-        const declarations = prop.getDeclarations();
-        const typeNode = declarations[0];
-        const typeAtLoc = prop.getTypeAtLocation(typeNode);
-        const typeParts = typeAtLoc.getText().split("|").map(p => p.trim());
-        for (const typeName of typeParts) {
-            Logger.debug(`Checking type: ${typeName} for property: ${name}`);
-            if (knownBuiltins.includes(typeName)) {
-                continue; // ok
-            }
-            const sym = typeAtLoc.getSymbol();
-            if (!sym) {
-                Logger.debug(`No symbol found for type: ${typeName} in property: ${name}`);
-                errors.push(new ParseError(`Unknown type referenced in @expect: '${typeName}'`, pugPath, contract.atExpectLine));
-                
-            }   else{
-                Logger.debug(`Symbol found for type: ${typeName} in property: ${name}`);
-                Logger.debug(sym);
+        Logger.debug("Checking if type is an object");
+        if (!type.isObject()) {
+            if (contract.atExpectLine != -1) {
+                errors.push(new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, contract.atExpectLine));
             }
         }
-       
 
-        virtualExpects[name] = typeAtLoc.getText();
+
+        Logger.debug("Get properties from Type");
+        const props = type.getProperties();
+
+        const knownBuiltins = ["string", "number", "boolean", "Date", "Record", "Array", "any", "unknown", "object", "null", "undefined", "never"]
+
+   
+
+        Logger.debug("Parsing properties from @expect...");
+        for (const prop of props) {
+            const name = prop.getName();
+            const declarations = prop.getDeclarations();
+            const typeNode = declarations[0];
+            const typeAtLoc = prop.getTypeAtLocation(typeNode);
+            const typeParts = typeAtLoc.getText().split("|").map(p => p.trim());
+            for (const typeName of typeParts) {
+                Logger.debug(`Checking type: ${typeName} for property: ${name}`);
+                if (knownBuiltins.includes(typeName)) {
+                    continue; // ok
+                }
+                const sym = typeAtLoc.getSymbol();
+                if (!sym) {
+                    // Logger.debug(`No symbol found for type: ${typeName} in property: ${name}`);
+                    errors.push(new ParseError(`Unknown type referenced in @expect: '${typeName}'`, pugPath, contract.atExpectLine));
+
+                } else {
+                    // Logger.debug(`Symbol found for type: ${typeName} in property: ${name}`);
+                    // Logger.debug(sym);
+                }
+            }
+
+            // Logger.debug(`xxxxxxxx Adding property to virtualExpects: ${name} with type: ${typeAtLoc.getText()}`);
+            // contract.virtualExpects[name] = typeAtLoc.getText();
+        }
     }
 
 

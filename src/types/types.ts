@@ -21,7 +21,7 @@ export class LineMap {
     const lines = src.split(/\r?\n/);
     for (const line of lines) {
       const currentIndex = this.list.length;
-      Logger.debug(`[${currentIndex}] Adding line: "${line}" - From: ${map.file}:${map.lineNumber} :oriSrc : "${oriSrc || ""}"`);
+      // Logger.debug(`[${currentIndex}] Adding line: "${line}" - From: ${map.file}:${map.lineNumber} :oriSrc : "${oriSrc || ""}"`);
       const indentation = this.indentString.repeat(this.indentLevel);
       this.tsSource += indentation + line + "\n";
 
@@ -37,8 +37,8 @@ export class LineMap {
 export class ParsedContract {
   pugPath: string; // path to the Pug file, for error reporting
 
-  rawExpects: string | undefined; // for future use, if we want to track raw expects
-  virtualExpects: Record<string, string>;
+  rawExpects: string; // for future use, if we want to track raw expects
+  
   atExpectLine: number; // line number where //@expect was found, for error reporting
 
   imports: Array<Import>; // list of imports from Pug, for error reporting
@@ -57,8 +57,8 @@ export class ParsedContract {
     this.pugPath = pugPath;
 
 
-    this.rawExpects = undefined;
-    this.virtualExpects = {};
+    this.rawExpects = "";
+    
     this.atExpectLine = -1;
 
     this.imports = [];

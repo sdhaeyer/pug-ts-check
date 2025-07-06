@@ -48,12 +48,16 @@ class ParsedResultStore {
     }
   }
   logErrors() {
-    
+    let foundErro =false
     for (const [file, result] of this.results.entries()) {
       if (result.errors.length > 0) {
+        foundErro = true
         console.log(`[${file}] -> ${result.errors.length} error(s)`);
       }
 
+    }
+    if (!foundErro) {
+      console.log("No errors found in parse results.");
     }
     
   }

@@ -1,7 +1,0 @@
-{
-  "tmpDir": "./src/.tmp",
-  "projectPath": "../../srv/apps/string-portrait/code/",
-  "pugPaths": ["./src/views"],
-  "logLevel": "info",
-  "viewsRoot": "./src/views" 
-}
