@@ -76,7 +76,7 @@ export class ParsedContract {
     Object.assign(contract, data);
 
     contract.imports = contract.imports.map(
-      imp => Import.fromImportString(`${imp.importClause} from "${imp.modulePath}"`, imp.file, imp.lineNumber)
+      imp => Import.fromImportString(imp.rawImportString, imp.file, imp.lineNumber)
     );
     return contract;
   }

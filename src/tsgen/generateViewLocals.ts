@@ -7,9 +7,12 @@ import { Logger } from "../utils/Logger";
 
 
 export function generateViewLocals() {
-    const outputPath = Path.resolve(config.projectPath, config.typesPath, "viewlocals.d.ts");
+
+    const outDir = Path.resolve(config.projectPath, config.typesPath);
+    const outputPath = Path.resolve(outDir, "viewlocals.d.ts");
     const store = parsedResultStore;
 
+    const importMap = new Map<string, Set<string>>();
     const importSet = new Set<string>();
     const interfaceLines: string[] = [];
     const viewMapLines: string[] = [];
@@ -22,8 +25,19 @@ export function generateViewLocals() {
         const interfaceName = viewNameToInterfaceName(viewName);
 
         // Collect import statements
+        // this is source string and set off symbols string
+
+
         for (const imp of contract.imports) {
-            importSet.add(imp.getRebasedImportStatement(Path.resolve(config.projectPath, config.typesPath)));
+            const { symbols, source } = { symbols: imp.importSymbols, source: imp.getRebasedPath(outDir) };
+            
+            if (!importMap.has(source)) {
+                importMap.set(source, new Set());
+            }
+            const symbolSet = importMap.get(source)!;
+            for (const sym of symbols) {
+                symbolSet.add(sym);
+            }
         }
 
         // Parse @expect block into key:type pairs
@@ -39,19 +53,23 @@ export function generateViewLocals() {
     }
 
     // Assemble output
+    for (const [source, symbols] of importMap) {
+        const importStatement = `import type { ${Array.from(symbols).sort().join(", ")} } from "${source}"`;
+        importSet.add(importStatement);
+    }
     const importBlock = Array.from(importSet).join("\n");
     const interfacesBlock = interfaceLines.join("\n");
     const viewMapBlock = `export type ViewLocals = {\n${viewMapLines.join("\n")}\n};`;
 
     const finalOutput = [importBlock, "", interfacesBlock, "", viewMapBlock, ""].join("\n");
 
-    
+
     // Ensure output directory exists
-    const outDir = Path.dirname(outputPath);
+
     if (!fs.existsSync(outDir)) {
         throw new Error(`Output directory for types does not exist: ${outDir}. Please create it.`);
     }
-        
+
 
     // Write only if changed
     const previous = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, "utf8") : "";
@@ -78,10 +96,10 @@ function capitalize(word: string): string {
 }
 
 function sanitizeInterfaceName(viewPath: string): string {
-  return viewPath
-    .replace(/[^a-zA-Z0-9]/g, "_") // replace -, / etc.
-    .replace(/^(\d)/, "_$1")       // prefix if starts with number
-    .replace(/^\W+/, "")           // remove leading non-word characters
+    return viewPath
+        .replace(/[^a-zA-Z0-9]/g, "_") // replace -, / etc.
+        .replace(/^(\d)/, "_$1")       // prefix if starts with number
+        .replace(/^\W+/, "")           // remove leading non-word characters
     //.replace(/([a-z])([A-Z])/g, "$1_$2"); // separate camelCase if needed
 }
 

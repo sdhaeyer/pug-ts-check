@@ -55,7 +55,7 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
 
                 let importObject
                 try {
-                    importObject = Import.fromImportString(ruleText, pugPath, currentLine);
+                    importObject = new Import(ruleText, pugPath, currentLine);
                     contract.imports.push(importObject);
                 } catch (e) {
                     errors.push(new ParseError(`ContractParseError: Invalid import line: ${ruleText}`, pugPath, currentLine));
