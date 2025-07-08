@@ -1,22 +1,221 @@
-# pug-check-ts
+# 🧩 pug-ts-check
 
-A dev-only static type checker to connect TypeScript types to Pug templates.
+**`pug-ts-check`** is a **static TypeScript checker for Pug templates**. It performs offline analysis of your `.pug` views to ensure that the locals and mixin arguments match their expected TypeScript types.
 
-## Features
+---
 
-- check Pug files for correct variable types
-- verify how your render calls pass locals
-- no runtime slowdown
+## 🚀 Purpose
 
-## Usage
+When rendering Pug templates in a Node.js/Express app, mismatches between what's passed and what the view expects often lead to **runtime errors**.
+
+`pug-ts-check` solves this by:
+
+- 🧠 Analyzing your `.pug` files statically
+- 🛠️ Validating expected `locals` and `mixin` arguments
+- 🧾 Generating a shared `viewlocals.d.ts` file
+- 🧘 Improving development experience (autocomplete, hover, etc.)
+- ❌ Preventing bugs before runtime
+
+> 🧼 This is a **static development tool only**. It does not run at runtime and does not modify your compiled templates.
+
+---
+
+## 📦 Installation
 
 ```bash
-npm run check:pug
-npm run check:usage
+npm install pug-ts-check --save-dev
 ```
 
-or
+You must also apply **two minor patches** to the `pug` compiler to allow typed mixin support and `//@` comment parsing. These can be installed via:
+I'm new to this pathces thing ... New to everything actually ... but i will probably add the patches in the git or more info somewhere else.
 
 ```bash
-npx pug-check-ts check-pug views/**/*.pug
+npm install pug@patched-version-name
 ```
+
+> (Details on patch contents and availability to be documented.)
+
+---
+
+## ⚙️ Configuration: `pug.tsconfig.json`
+
+```json
+{
+  "tmpDir": "./src/.tmp",
+  "projectPath": "../../srv/apps/string-portrait/code/",
+  "pugPaths": ["./src/views"],
+  "logLevel": "info",
+  "viewsRoot": "./src/views",
+  "typesPath": "./src/types"
+}
+```
+
+### Key Fields
+
+| Field         | Description                                                                 |
+|---------------|-----------------------------------------------------------------------------|
+| `tmpDir`      | Temporary directory used for generated `.ts` files                          |
+| `projectPath` | Path to your app's `tsconfig.json` (needed for type resolution)             |
+| `pugPaths`    | One or more directories where `.pug` files live                             |
+| `logLevel`    | Logging verbosity (`info`, `warn`, `error`, `debug`)                        |
+| `viewsRoot`   | Base directory for resolving included views (typically `views` folder)      |
+| `typesPath`   | Where `viewlocals.d.ts` will be generated                                   |
+
+---
+
+## 💡 Declaring Imports and Expected Locals
+
+Use `//@` comments to describe what the view expects:
+
+```pug
+//@ import type { User, Cart } from '../types/models.js'
+//@ expect { user: User, cart: Cart }
+
+extends layout
+
+block content
+  +orderOverview(cart, user)
+  p Welcome #{user.name} to your order history!
+```
+
+---
+
+## ➕ Mixins with Typed Parameters
+
+You can add type-safe mixin definitions as well:
+
+```pug
+//@ import type { Cart } from '../types/models.js'
+//@ import type { User } from '../types/models.js'
+//@ expect {}
+
+mixin orderOverview(cart: Cart, user: User)
+  ul
+    each item in cart.items
+      li= item.product.name + ' - ' + item.quantity + ' pcs'
+  if cart.items.length > 0
+    p Total items: #{cart.items.length}
+  else
+    p Your cart is empty.
+```
+
+The checker verifies all usages of `+orderOverview(...)` and enforces correct argument types.
+
+---
+
+## 🧪 Running the CLI
+
+```bash
+npx pug-ts-check
+```
+
+### Options
+
+```bash
+npx pug-ts-check [path] [options]
+```
+
+| Flag              | Description                                  |
+|-------------------|----------------------------------------------|
+| `[path]`          | File or folder to analyze (optional)         |
+| `--watch`         | Re-run when `.pug` files change              |
+| `--verbose`       | Show detailed output                         |
+| `--silent`        | Suppress logs                                |
+| `--tmpDir <dir>`  | Override temp directory                      |
+| `--projectPath`   | Path to `tsconfig.json`                      |
+| `--pugTsConfig`   | Use alternative config file (default: `pug.tsconfig.json`) |
+
+---
+
+## 🧾 Output
+
+After running, you'll get a file like:
+
+```ts
+// src/types/viewlocals.d.ts
+
+declare namespace ViewLocals {
+  interface Index { title: string }
+  interface CartHistory { user: User; cart: Cart }
+  ...
+}
+```
+
+Use this for type safety in your controllers.
+
+---
+## 🧩 Express Integration with `typedRender`
+
+To enforce view-local types at runtime, you can extend Express's `res` object with a `typedRender` helper.
+
+### 1. Add a Type Augmentation
+
+Create a file like `express.d.ts` in your project:
+
+```ts
+import "express";
+
+declare module "express-serve-static-core" {
+  interface Response {
+    typedRender<K extends keyof ViewLocals>(
+      view: K,
+      locals: ViewLocals[K]
+    ): void;
+  }
+}
+```
+
+### 2. Add the Runtime Implementation
+
+In your app setup code (e.g. `app.ts`):
+
+```ts
+app.use((req, res, next) => {
+  res.typedRender = function(view, locals) {
+    return res.render(view, locals);
+  };
+  next();
+});
+```
+
+### 3. Use in Controllers
+
+You now get full type safety when rendering views:
+
+```ts
+res.typedRender("pages/home", {
+  user: currentUser,
+  cart: currentCart
+});
+```
+
+## 📂 Typical Project Structure
+
+```
+project-root/
+├── src/
+│   ├── views/                # Pug templates
+│   ├── types/
+│   │   └── viewlocals.d.ts   # Generated typings
+│   └── .tmp/                 # Temp output (safe to ignore)
+├── pug.tsconfig.json         # Static checker config
+├── tsconfig.json             # TypeScript config
+```
+
+---
+
+## ✅ Features
+
+- ✅ Static TypeScript checking for Pug views
+- ✅ Typed `locals` and mixin parameters
+- ✅ Autogenerated `viewlocals.d.ts`
+- ✅ Watch mode for live feedback
+- ✅ Simple CLI integration
+- ✅ IDE-friendly annotations (`//@ import`, `//@ expect`)
+
+---
+
+## 🧠 Credits
+
+Created with ❤️ to bring modern type safety to template rendering.  
+Contributions, suggestions, and integrations welcome!

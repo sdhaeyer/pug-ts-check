@@ -1,0 +1,232 @@
+{
+  "parseResults": [
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug",
+      {
+        "errors": [],
+        "contract": {
+          "pugPath": "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug",
+          "rawExpects": "{}",
+          "atExpectLine": 4,
+          "imports": [
+            {
+              "importClause": "import type { Cart }",
+              "modulePath": "../types/models.js",
+              "lineNumber": 1,
+              "file": "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug"
+            },
+            {
+              "importClause": "import type { User }",
+              "modulePath": "../types/models.js",
+              "lineNumber": 2,
+              "file": "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug"
+            }
+          ],
+          "rawIncludes": [],
+          "includes": [],
+          "rawExtends": [],
+          "extends": []
+        },
+        "mtimeMs": 1751975084026.2075
+      }
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug",
+      {
+        "errors": [],
+        "contract": {
+          "pugPath": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\layout.pug",
+          "rawExpects": "{cart: Cart, user: User, featured: Product[]}",
+          "atExpectLine": 2,
+          "imports": [
+            {
+              "importClause": "import { Cart, User, Product }",
+              "modulePath": "../types/models",
+              "lineNumber": 1,
+              "file": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\layout.pug"
+            }
+          ],
+          "rawIncludes": [],
+          "includes": [],
+          "rawExtends": [],
+          "extends": []
+        },
+        "mtimeMs": 1751982468085.3071,
+        "stale": false
+      }
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/test-complex2.pug",
+      {
+        "errors": [],
+        "contract": {
+          "pugPath": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\test-complex2.pug",
+          "rawExpects": "{ user: User, cart: Cart, featured: Product[], isAdmin: Boolean }",
+          "atExpectLine": 2,
+          "imports": [
+            {
+              "importClause": "import type { User, Cart, Product }",
+              "modulePath": "../types/models",
+              "lineNumber": 1,
+              "file": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\test-complex2.pug"
+            }
+          ],
+          "rawIncludes": [],
+          "includes": [],
+          "rawExtends": [
+            "layout.pug"
+          ],
+          "extends": [
+            "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug"
+          ]
+        },
+        "mtimeMs": 1751830042799.5325,
+        "stale": false
+      }
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/test-complex.pug",
+      {
+        "errors": [],
+        "contract": {
+          "pugPath": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\test-complex.pug",
+          "rawExpects": "{ user: User, cart: Cart, featured: Product[] }",
+          "atExpectLine": 4,
+          "imports": [
+            {
+              "importClause": "import type { User, Cart, Product }",
+              "modulePath": "../types/models",
+              "lineNumber": 3,
+              "file": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\test-complex.pug"
+            }
+          ],
+          "rawIncludes": [
+            "_orderOverview.pug"
+          ],
+          "includes": [
+            "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug"
+          ],
+          "rawExtends": [
+            "layout.pug"
+          ],
+          "extends": [
+            "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug"
+          ]
+        },
+        "mtimeMs": 1751982349343.733,
+        "stale": false
+      }
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/sample.pug",
+      {
+        "errors": [],
+        "contract": {
+          "pugPath": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\sample.pug",
+          "rawExpects": "{ user: User, cart: Cart }",
+          "atExpectLine": 2,
+          "imports": [
+            {
+              "importClause": "import type { User, Cart }",
+              "modulePath": "../types/models.js",
+              "lineNumber": 1,
+              "file": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\sample.pug"
+            }
+          ],
+          "rawIncludes": [
+            "_orderOverview.pug"
+          ],
+          "includes": [
+            "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug"
+          ],
+          "rawExtends": [
+            "layout.pug"
+          ],
+          "extends": [
+            "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug"
+          ]
+        },
+        "mtimeMs": 1751461921447.8572,
+        "stale": false
+      }
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/lalilu/x.pug",
+      {
+        "errors": [],
+        "contract": {
+          "pugPath": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\lalilu\\x.pug",
+          "rawExpects": "{ user: User, cart: Cart }",
+          "atExpectLine": 2,
+          "imports": [
+            {
+              "importClause": "import type { User, Cart }",
+              "modulePath": "../../types/models.js",
+              "lineNumber": 1,
+              "file": "C:\\Users\\sam\\Desktop\\program-projects\\node_projects\\pug-ts-check\\tests\\example-test-project\\pug\\lalilu\\x.pug"
+            }
+          ],
+          "rawIncludes": [
+            "../_orderOverview.pug"
+          ],
+          "includes": [
+            "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug"
+          ],
+          "rawExtends": [
+            "../layout.pug"
+          ],
+          "extends": [
+            "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug"
+          ]
+        },
+        "mtimeMs": 1751461934925.8105,
+        "stale": false
+      }
+    ]
+  ],
+  "dependencyGraph": [
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug",
+      [
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/types/models.ts"
+      ]
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug",
+      [
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/types/models.ts"
+      ]
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/test-complex2.pug",
+      [
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug",
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/types/models.ts"
+      ]
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/test-complex.pug",
+      [
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug",
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug",
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/types/models.ts"
+      ]
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/sample.pug",
+      [
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug",
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug",
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/types/models.ts"
+      ]
+    ],
+    [
+      "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/lalilu/x.pug",
+      [
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/_orderOverview.pug",
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/pug/layout.pug",
+        "C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/tests/example-test-project/types/models.ts"
+      ]
+    ]
+  ]
+}

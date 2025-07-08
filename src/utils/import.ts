@@ -9,7 +9,7 @@ export class Import {
   lineNumber: number;
   file: string;
 
-  constructor(importString: string, file: string,lineNumber: number ) {
+  constructor(importString: string, file: string, lineNumber: number) {
     const match = importString.match(/^(import\s+.*)\s+from\s+['"]([^'"]+)['"]/);
     if (!match) {
       throw new ParseError(`Invalid import line: ${importString}`, file, lineNumber);
@@ -39,14 +39,24 @@ export class Import {
   /**
    * Returns an import statement relative to the tmp directory
    */
-  getRebasedImportStatement(): string {
-    const absPath = this.getAbsolutePath();
+  getRebasedImportStatementTemp(): string {
+    
     const tmpDir = Path.resolve(config.projectPath, config.tmpDir);
-    const relativeToTmp = Path.relative(tmpDir, absPath);
+    return this.getRebasedImportStatement(tmpDir);
+    
+  }
+
+   /**
+   * Returns an import statement relative to the tmp directory
+   */
+  getRebasedImportStatement(folder: string): string {
+    const absPath = this.getAbsolutePath();
+    
+    const relativeToTmp = Path.relative(folder, absPath);
     return `${this.importClause} from "${relativeToTmp}"`;
   }
 
-    static fromImportString(importString: string, file: string, lineNumber: number): Import {
-        return new Import(importString, file, lineNumber);
-    }
+  static fromImportString(importString: string, file: string, lineNumber: number): Import {
+    return new Import(importString, file, lineNumber);
+  }
 }

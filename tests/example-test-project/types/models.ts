@@ -12,7 +12,7 @@ export interface CartItem {
 }
 export interface Product {
   id: number;
-  naam: string;
+  name: string;
   descriptions: string[];
   description: string;
   price: number;

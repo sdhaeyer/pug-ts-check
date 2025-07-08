@@ -1,6 +1,13 @@
 import fs from "node:fs";
-import { config } from "./config.js";
+import { config, configSchema } from "./config.js";
 import { Logger } from "../utils/Logger.js";
+import { get } from "node:http";
+import { Path } from "../utils/utils.js";
+import { askYesNo } from "../utils/askYesNo.js";
+
+
+
+let pugTsConfigPath: string | null = null;
 
 export interface PugTsConfig {
   tmpDir: string;
@@ -9,26 +16,62 @@ export interface PugTsConfig {
   logLevel: "info" | "debug" | "silent";
 }
 
-export function loadPugConfig(configPath: string): void {
+
+
+
+export async function setAndLoadPugTsConfigPath(configPath: string): Promise<void> {
+  pugTsConfigPath = configPath;
+
+  // loading ... 
   if (!fs.existsSync(configPath)) {
-    Logger.warn(`⚠️  No pug.tsconfig.json found at ${configPath}, using built-in defaults.`);
-    
+    Logger.warn(`⚠️ No pug.tsconfig.json found at ${configPath}, using built-in defaults.`);
+
   }
 
   const raw = fs.readFileSync(configPath, "utf8");
   const parsed = JSON.parse(raw);
 
-  try {
-
-    // Set global config
-    config.tmpDir = parsed.tmpDir;
-    config.projectPath = parsed.projectPath;
-    config.pugPaths = parsed.pugPaths;
-    config.logLevel = parsed.logLevel;
+  
+  // Validate and assign
+  try   {
+    const validated = configSchema.parse(parsed);
+    // Set it directly
+    Object.assign(config, validated);
+  
+    configSchema.parse(parsed);
+  }catch (error) {
+    throw new Error(`Unable to parse your config file: \n ${configPath}:\n ${error}`, error instanceof Error ? { cause: error } : undefined);
   }
-  catch (err) {
-    Logger.error(`❌ Error parsing pug.tsconfig.json: ${err}`);
-    throw new Error(`Failed to load Pug TypeScript config from ${configPath}`, { cause: err });
+
+  // making the directory if it does not exist after asking
+  const typesDir = Path.dirname(Path.resolve(config.projectPath, config.typesPath));
+  if (!fs.existsSync(typesDir)) {
+    const shouldCreate = await askYesNo(`❓ Output directory does not exist:\n ${typesDir}\n Create it?`);
+    if (!shouldCreate) {
+      throw new Error(`Aborted: output directory was missing.`);
+    }
+    fs.mkdirSync(typesDir, { recursive: true });
+    Logger.info(`📁 Created directory: ${typesDir}`);
   }
 
+  // we need to catch that viewsRoot is a parent directory of all the pug paths( for starters might expend to multiple pug roots later)
+  const viewsRoot = Path.resolve(config.projectPath, config.viewsRoot);
+  config.pugPaths.forEach((pugPath) => {
+    const resolved = Path.resolve(config.projectPath, pugPath);
+    if (!isSubpath(viewsRoot, resolved)) {
+      throw new Error(`Pug path ${pugPath} is not under viewsRoot ${config.viewsRoot}\n Please adjust the config file:\n ${configPath}\n to ensure that all pug paths are under the viewsRoot: ${viewsRoot}`);
+    }
+  });
+}
+
+export function getPugTsConfigPath(): string {
+  if (pugTsConfigPath) {
+    return pugTsConfigPath;
+  }
+  throw new Error(`❌ Pug TypeScript config path is not set.`);
+}
+
+function isSubpath(parent: string, child: string): boolean {
+  const relative = Path.relative(parent, child);
+  return !!relative && !relative.startsWith("..") && !Path.isAbsolute(relative);
 }

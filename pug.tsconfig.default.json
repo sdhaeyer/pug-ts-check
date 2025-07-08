@@ -3,5 +3,6 @@
   "projectPath": "./",
   "pugPaths": ["./src/views", "./tests/pugs"],
   "logLevel": "info",
-  "viewsRoot": "./views" 
+  "viewsRoot": "./views",
+  "typesPath": "./types"
 }

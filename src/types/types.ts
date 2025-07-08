@@ -70,6 +70,16 @@ export class ParsedContract {
     this.extends = [];
 
   }
+
+  static rehydrate(data: Partial<ParsedContract>): ParsedContract {
+    const contract = new ParsedContract(data.pugPath || "");
+    Object.assign(contract, data);
+
+    contract.imports = contract.imports.map(
+      imp => Import.fromImportString(`${imp.importClause} from "${imp.modulePath}"`, imp.file, imp.lineNumber)
+    );
+    return contract;
+  }
 }
 
 

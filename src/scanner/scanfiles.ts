@@ -16,6 +16,8 @@ import { dependencyGraph } from "../cache/dependencyGraph.js";
 import { parsedResultStore } from "../cache/parsedResult.js";
 
 import { lastScannedFile } from "../cache/lastScannedFile.js";
+import { generateViewLocals } from "../tsgen/generateViewLocals.js";
+import { getPugTsConfigPath } from "../config/loadPugConfig.js";
 
 export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
   lastScannedFile.path = pugPath;
@@ -95,15 +97,16 @@ const seen = new Set<string>();
 
 
 
-export function scanAll(watcher?: FSWatcher): Map<string, ParseError[]> {
+export function scanNewAndChanged(watcher?: FSWatcher):void  {
   const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
-
-
-
-  const result = new Map<string, ParseError[]>();
+  parsedResultStore.markStaleFiles()
 
   for (const pugRoot of pugPaths) {
     let pugFiles: string[] = [];
+    if (!fs.existsSync(pugRoot)) {
+
+      throw new Error(`❌ Looking at pugPaths...\n [${pugPaths}] \n  Pugroot does not exist:\n  ${pugRoot}\n  Please check your configuration...  \n  ${getPugTsConfigPath()} \n Pugpaths must be relative to the projectpath given.`);
+    }
 
     if (!fs.statSync(pugRoot).isDirectory()) {
       pugFiles = [pugRoot];
@@ -120,40 +123,24 @@ export function scanAll(watcher?: FSWatcher): Map<string, ParseError[]> {
       Logger.warn(`No Pug files found in ${pugRoot}, pug paths in config are relative to projectPath: ${config.projectPath}`);
     }
     for (const pugFile of pugFiles) {
-
       const existing = parsedResultStore.get(pugFile);
-
       let needsRescan = false;
 
       if (!existing) {
         needsRescan = true;
       } else {
-        try {
-          const currentMtime = fs.statSync(pugFile).mtimeMs;
-          if (currentMtime !== existing.mtimeMs) {
-            needsRescan = true;
-          }
-        } catch {
-          needsRescan = true;
-        }
+        needsRescan = existing.stale;
       }
-
-
       if (needsRescan) {
         const { contract, errors } = scanFile(pugFile, watcher);
-        logParseError(errors, pugFile);
-        result.set(pugFile, errors);
-
-
+        
       }
-
-
-
+    }
+    Logger.info(` Type-check completed for all changed Pug files in ${pugRoot}`);
+    if(!parsedResultStore.hasErrors()) {
+      generateViewLocals();
     }
 
-    Logger.info(` Type-check completed for all changed Pug files in ${pugRoot}`);
-    
-
   }
-  return result;
+  
 }

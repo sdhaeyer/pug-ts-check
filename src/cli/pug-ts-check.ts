@@ -4,17 +4,18 @@ import chokidar from "chokidar";
 import path from "node:path";
 import fs from "node:fs";
 import { Logger } from "../utils/Logger.js";
-import { scanAll, scanFile } from "../scanner/scanfiles.js";
+import { scanNewAndChanged, scanFile } from "../scanner/scanfiles.js";
 
 
 import { config } from "../config/config.js";
-import { loadPugConfig } from "../config/loadPugConfig.js";
+import {  setAndLoadPugTsConfigPath } from "../config/loadPugConfig.js";
 import { getTsProject } from "../validate/projectCache.js";
 import { dependencyGraph } from "../cache/dependencyGraph.js";
 import { logParseError, logSnippet } from "../logDiagnostics/logDiagnostics.js";
 import { parsedResultStore } from "../cache/parsedResult.js";
 import { lastScannedFile } from "../cache/lastScannedFile.js";
 import { error } from "node:console";
+import { generateViewLocals } from "../tsgen/generateViewLocals.js";
 
 
 const program = new Command();
@@ -30,8 +31,8 @@ program
   .option("--projectPath <path>", "TypeScript project path")
   .option("--tmpDir <dir>", "temporary dir")
   .option("--pugTsConfig <pug.tsconfig.json>", "path to Pug TypeScript config file")
-  .action((targetPath, options) => {
-    
+  .action(async (targetPath, options) => {
+
 
     if (options.silent) {
       Logger.setLevel("silent");
@@ -43,12 +44,13 @@ program
 
     Logger.debug("Showing debug lines ");
     const pugTsConfigPath = options.pugTsConfig || "pug.tsconfig.json";
+    
     if (options.pugTsConfig) {
       Logger.init(`Using custom Pug TypeScript config at: ${pugTsConfigPath}`);
     }
 
 
-    loadPugConfig(pugTsConfigPath)
+    await setAndLoadPugTsConfigPath(pugTsConfigPath)
     Logger.debug(config)
 
     Logger.init("Loading Pug ParsedResults from disk...");
@@ -105,19 +107,21 @@ program
       watcher.on("ready", () => {
         //console.clear();
         Logger.init("✅ Watcher Ready");
-        Logger.init("Starting scan Off changed files...");
+        Logger.init("Starting scan changed files...");
 
         // Initial scanproject.finishedData.ThreadLength
-        scanAll(watcher);
+        scanNewAndChanged(watcher);
+        parsedResultStore.logSummary();
+
         Logger.init("✅ Initial scan complete. Watching for changes...");
       });
 
       watcher.on("all", (event, file) => {
         file = path.resolve(file);
-        
+
         console.log("***************************************************");
         Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
-        
+
         if (event === "add" || event === "change") {
           let scanDepGraph = false;
           if (file.endsWith(".ts")) {
@@ -125,37 +129,40 @@ program
             if (refreshed) {
               refreshed.refreshFromFileSystemSync();
               Logger.info(`Refreshed ${file} in ts-morph project`);
-              scanDepGraph = true;
+               dependencyGraph.getDependentsOf(file).forEach((pugPath) => {
+                parsedResultStore.setStale(pugPath, true);
+                parsedResultStore.markStaleDependents();
+
+            });
             }
           } else {
-            const { errors } = scanFile(file,watcher);
-
+            const { errors, contract } = scanFile(file, watcher);
             logParseError(errors, file);
-            if (errors.length == 0) {
-              Logger.info(`✅ Successfully re-scanned ${file}`);
-              scanDepGraph  = true;
-            } else {
-              Logger.error(`❌ Errors found while re-scanning ${file}`);
-              Logger.error(`Not scanning dependency graph`);
-            }
-            
+            parsedResultStore.setStale(file, true);
+            parsedResultStore.markStaleDependents();
+            parsedResultStore.setStale(file, false);
+
           }
-          if (scanDepGraph) {
-              Logger.info(`🔍 Scanning dependency graph`);
-              dependencyGraph.getDependentsOf(file).forEach((pugPath) => {
-                const { contract, errors } = scanFile(pugPath, watcher);
-                logParseError(errors, pugPath);
-                Logger.info(`Re-scanned ${pugPath}`);
-              });
-              Logger.info(`🔍 Scanning dependency graph complete.`);
-            } else{
-              Logger.info(`Skipping dependency graph scan for ${file}`);
-            }
-            
+          if (parsedResultStore.hasStale()) {
+            Logger.info(`🔍 Scanning dependency graph through stale`);
+            scanNewAndChanged(watcher);
+            Logger.info(`🔍 Scanning dependency graph complete.`);
+          } else {
+            Logger.info(`Skipping dependency graph scan for ${file}`);
+          }
+          if(!parsedResultStore.hasErrors()) {
+            Logger.info(`✅ All changes processed successfully.`);
+            Logger.info(`Generating locals for all contracts...`);
+            generateViewLocals();
+          }else{
+            parsedResultStore.logFull();
+
+          }
 
 
-          // reScanAll(watcher);
+          // scanNewAndChanged(watcher);
         }
+        
 
       });
       watcher.on("error", (err) => {
@@ -169,7 +176,8 @@ program
       process.stdin.on("data", (key: string) => {
         if (key === "r") {
           console.log("manual rescan!");
-          scanAll(watcher);
+          scanNewAndChanged(watcher);
+          parsedResultStore.logSummary();
         }
         if (key === "s") {
           console.log("summary!");
@@ -207,12 +215,12 @@ program
       });
 
     } else {
-      scanAll(undefined);
+      scanNewAndChanged(undefined);
+      parsedResultStore.logErrors();
     }
 
 
   });
 
-program.parse();
-
+await program.parseAsync()
 

@@ -3,5 +3,6 @@
   "projectPath": "../../srv/apps/string-portrait/code/",
   "pugPaths": ["./src/views"],
   "logLevel": "info",
-  "viewsRoot": "./src/views" 
+  "viewsRoot": "./src/views", 
+  "typesPath": "./src/types"
 }
