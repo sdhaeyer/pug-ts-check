@@ -1,9 +1,9 @@
 {
-    "name": "pug-check-ts",
+    "name": "pug-ts-check",
     "version": "0.1.0",
     "type": "module",
     "bin": {
-        "pug-check-ts": "./dist/cli/index.js"
+        "pug-ts-check": "./dist/cli/index.js"
     },
     "scripts": {
         "build": "tsc",
