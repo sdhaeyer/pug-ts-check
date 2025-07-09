@@ -7,15 +7,16 @@ import { Logger } from "../utils/Logger.js";
 import { scanNewAndChanged, scanFile } from "../scanner/scanfiles.js";
 
 
-import { config } from "../config/config.js";
-import {  setAndLoadPugTsConfigPath } from "../config/loadPugConfig.js";
-import { getTsProject } from "../validate/projectCache.js";
+import { Config, config } from "../config/config.js";
+import { loadPugTsConfigPath } from "../config/loadPugConfig.js";
 import { dependencyGraph } from "../cache/dependencyGraph.js";
 import { logParseError, logSnippet } from "../logDiagnostics/logDiagnostics.js";
 import { parsedResultStore } from "../cache/parsedResult.js";
 import { lastScannedFile } from "../cache/lastScannedFile.js";
 import { error } from "node:console";
 import { generateViewLocals } from "../tsgen/generateViewLocals.js";
+import { getProjectContext, initProjectContext } from "../cache/project-context.js";
+import { Path } from "../utils/utils.js";
 
 
 const program = new Command();
@@ -30,7 +31,7 @@ program
   .option("--watch", "watch a directory for changes and re-run")
   .option("--projectPath <path>", "TypeScript project path")
   .option("--tmpDir <dir>", "temporary dir")
-  .option("--pugTsConfig <pug.tsconfig.json>", "path to Pug TypeScript config file")
+  .option("--config <pug.tsconfig.json>", "path to Pug TypeScript config file")
   .action(async (targetPath, options) => {
 
 
@@ -43,19 +44,17 @@ program
     }
 
     Logger.debug("Showing debug lines ");
-    const pugTsConfigPath = options.pugTsConfig || "pug.tsconfig.json";
-    
-    if (options.pugTsConfig) {
+    const pugTsConfigPath = options.config || "pug.tsconfig.json";
+
+    if (options.config) {
       Logger.init(`Using custom Pug TypeScript config at: ${pugTsConfigPath}`);
     }
 
-
-    await setAndLoadPugTsConfigPath(pugTsConfigPath)
+    await loadPugTsConfigPath(pugTsConfigPath)
     Logger.debug(config)
 
-    Logger.init("Loading Pug ParsedResults from disk...");
-    parsedResultStore.load();
 
+    // overwrite the config with the options
 
     if (options.tmpDir) {
       config.tmpDir = options.tmpDir;
@@ -63,14 +62,16 @@ program
     if (options.projectPath) {
       config.projectPath = options.projectPath;
     }
-
     if (options.pugPaths && options.pugPaths.length > 0) {
       config.pugPaths = options.pugPaths.map((p: string) => path.resolve(p));
     }
 
-    // after gettingh the configs... 
-
-    getTsProject(); // Initialize ts-morph project
+    quickValidateConfig(config, pugTsConfigPath)
+    
+    // Make the project after using the config 
+    const ctx = initProjectContext(pugTsConfigPath);
+    Logger.init("Loading Pug ParsedResults from disk...");
+    parsedResultStore.load();
 
     var singleFile = false
     if (targetPath) {
@@ -104,6 +105,10 @@ program
         },
         ignoreInitial: true,
       });
+      if (config.sharedLocals?.importPath) {
+        const abs = path.resolve(path.dirname(config.projectPath), config.sharedLocals.importPath) + ".ts";
+        watcher.add(abs);
+      }
       watcher.on("ready", () => {
         //console.clear();
         Logger.init("✅ Watcher Ready");
@@ -125,15 +130,15 @@ program
         if (event === "add" || event === "change") {
           let scanDepGraph = false;
           if (file.endsWith(".ts")) {
-            const refreshed = getTsProject().getSourceFile(file);
+            const refreshed = ctx.tsProject.getSourceFile(file);
             if (refreshed) {
               refreshed.refreshFromFileSystemSync();
               Logger.info(`Refreshed ${file} in ts-morph project`);
-               dependencyGraph.getDependentsOf(file).forEach((pugPath) => {
+              dependencyGraph.getDependentsOf(file).forEach((pugPath) => {
                 parsedResultStore.setStale(pugPath, true);
                 parsedResultStore.markStaleDependents();
 
-            });
+              });
             }
           } else {
             const { errors, contract } = scanFile(file, watcher);
@@ -150,11 +155,11 @@ program
           } else {
             Logger.info(`Skipping dependency graph scan for ${file}`);
           }
-          if(!parsedResultStore.hasErrors()) {
+          if (!parsedResultStore.hasErrors()) {
             Logger.info(`✅ All changes processed successfully.`);
             Logger.info(`Generating locals for all contracts...`);
             generateViewLocals();
-          }else{
+          } else {
             parsedResultStore.logFull();
 
           }
@@ -162,7 +167,7 @@ program
 
           // scanNewAndChanged(watcher);
         }
-        
+
 
       });
       watcher.on("error", (err) => {
@@ -217,6 +222,8 @@ program
     } else {
       scanNewAndChanged(undefined);
       parsedResultStore.logErrors();
+      parsedResultStore.save();
+
     }
 
 
@@ -224,3 +231,57 @@ program
 
 await program.parseAsync()
 
+
+
+function quickValidateConfig(config: Config, configPath: string ) {
+  const message = `❌ Invalid configuration at ${configPath}:\n`; 
+  if (!config.projectPath) {
+    throw new Error(message + "Project path is not set in the configuration.");
+  } else {
+    if (!fs.existsSync(config.projectPath)) {
+      throw new Error(message + `Project path does not exist: ${config.projectPath}`);
+    }
+  }
+
+  if (!config.pugPaths || config.pugPaths.length === 0) {
+    throw new Error(message + "Pug paths are not set in the configuration.");
+
+  } else {
+    for (const pugPath of config.pugPaths) {
+      const abs = Path.resolve(config.projectPath, pugPath);
+      if (!fs.existsSync(abs)) {
+        throw new Error(message + `Pug path does not exist: ${abs}`);
+      }
+    }
+    if (!config.viewsRoot) {
+      throw new Error(message + "Views root is not set in the configuration.");
+    } else {
+      const abs = Path.resolve(config.projectPath, config.viewsRoot);
+      if (!fs.existsSync(abs)) {
+        throw new Error(message + `Views root does not exist: ${abs}`);
+      }
+    }
+    if (!config.typesPath) {
+      throw new Error(message + "Types path is not set in the configuration.");
+    } else {
+      const abs = Path.resolve(config.projectPath, config.typesPath);
+      if (!fs.existsSync(abs)) {
+        throw new Error(message + `Types path does not exist: ${abs}`);
+      }
+    }
+    if (!config.sharedLocals) {
+      //optional is ok
+    } else {
+      if (!config.sharedLocals.importPath) {
+        throw new Error(message + "Shared locals import path is not set in the configuration.");
+      } else {
+        const abs = Path.resolve(config.projectPath, config.sharedLocals.importPath);
+        if (!fs.existsSync(abs)) {
+          throw new Error(message + `Shared locals import path does not exist: ${abs}`);
+        }
+      }
+
+    }
+
+  }
+}

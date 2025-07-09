@@ -9,6 +9,8 @@ import { printWithLineNumbers } from "../src/utils/utils.js";
 import { log } from "console";
 import { logParseError } from "../src/logDiagnostics/logDiagnostics.js";
 import { ParseError } from "../src/errors/ParseError.js";
+import { get } from "http";
+import { getProjectContext } from "../src/cache/project-context.js";
 
 try {
     Logger.info("🚀 validateGeneratedTs TEST STARTING");
@@ -35,7 +37,7 @@ try {
         
     }
     // generate TS
-    const tsResult = generateTsFromPugAst(ast, contract);
+    const tsResult = generateTsFromPugAst(ast, contract, getProjectContext());
 
     // Logger.info("✅ Generated TypeScript:");
     // printWithLineNumbers(tsResult.tsSource);

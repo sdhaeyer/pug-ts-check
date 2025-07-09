@@ -3,11 +3,12 @@ import path from "node:path";
 import {  SyntaxKind, Diagnostic   } from "ts-morph";
 import { Logger } from "../utils/Logger.js";
 import type { MappedLine } from "../types/types.js"; // fix if needed
-import { getTsProject } from "./projectCache.js";
+
 import {config} from "../config/config.js";
 import * as ts from "typescript";
 import { ParseError } from "../errors/ParseError.js";
-import { errorCodeDescriptions } from "../logDiagnostics/logDiagnostics.js";
+
+import { getProjectContext } from "../cache/project-context.js";
 
 export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], oriFilePath: string ):ParseError[]   {
     Logger.debug("Starting type-check of generated TypeScript...");
@@ -19,7 +20,9 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], or
 
     
     const tmpDir = path.join(config.projectPath, config.tmpDir);
-    const project = getTsProject();
+    const ctx = getProjectContext();
+    const project = ctx.tsProject; 
+    
 
     
     // ensure the tmp dir exists on disk

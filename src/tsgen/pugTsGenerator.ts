@@ -1,15 +1,11 @@
 // src/tsgen/PugTsGenerator.ts
-
-import type { PugAst, PugAstNode } from "../types/PugAst.js";
+import type { PugAstNode } from "../types/PugAst.js";
 import { Logger } from "../utils/Logger.js";
 import { LineMap, type MappedLine, type ParsedContract } from "../types/types.js";
-import { config } from "../config/config.js";
-import path from "node:path";
 import { extractNames } from "../utils/utils.js";
 
-
-
-
+import { ProjectContext } from "../types/ProjectContext.js";
+import { config } from "../config/config.js";
 
 /**
  * Generate TypeScript source from Pug AST.
@@ -17,26 +13,36 @@ import { extractNames } from "../utils/utils.js";
  */
 
 
-export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract): 
-    { tsSource: string; lineMap: MappedLine[] } {
+export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract, ctx: ProjectContext): { tsSource: string; lineMap: MappedLine[] } {
 
-    
+
     const lineMap = new LineMap();
 
 
     lineMap.addLine("// Generated TypeScript from Pug AST");
 
+    // Add import for shared locals if defined and not already included
+    if (ctx.sharedLocalsMeta) {
+        lineMap.addLine(ctx.sharedLocalsMeta.importline);
 
+    }
+    const sharedFields = ctx.sharedLocalsMeta?.fields ?? [];
+    const viewFields = extractNames(contract.rawExpects);
+    const allFields = [...new Set([...sharedFields, ...viewFields])];
 
     // Add contract imports
     for (const impObj of contract.imports) {
         lineMap.addLine(impObj.getAbsoluteImportStatement(), { lineNumber: impObj.lineNumber, file: impObj.file });
     }
-   
 
-    lineMap.addLine(`export function render(locals: ${contract.rawExpects}) {`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
+    let expectedType = contract.rawExpects
+    if (config.sharedLocals?.typeName) {
+        expectedType = `${config.sharedLocals.typeName} & ${expectedType}`;
+    }
+    
+    lineMap.addLine(`export function render(locals: ${expectedType}) {`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
     lineMap.indentLevel++;
-    lineMap.addLine(`const { ${extractNames(contract.rawExpects).join(", ")} } = locals;`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
+    lineMap.addLine(`const { ${allFields.join(", ")} } = locals;`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
 
     function visit(node: PugAstNode) {
         if (!node) return;
@@ -137,5 +143,5 @@ export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract):
 
     const ss = lineMap.tsSource;
     const LL = lineMap.list
-    return { tsSource:ss , lineMap:LL };
+    return { tsSource: ss, lineMap: LL };
 }

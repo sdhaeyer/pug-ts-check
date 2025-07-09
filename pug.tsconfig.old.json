@@ -1,7 +1,11 @@
 {
   "tmpDir": ".tmp",
-  "projectPath": "./tests/example-test-project",
+  "projectPath": "./tests/example-test-project/",
   "pugPaths": ["./pug"],
   "viewsRoot": "./pug",
-  "typesPath": "./types"
+  "typesPath": "./types",
+  "sharedLocals": {
+    "importPath": "./types/sharedlocals.ts",
+    "typeName": "SharedLocals"
+  }
 }

@@ -4,5 +4,9 @@
   "pugPaths": ["./src/views"],
   "logLevel": "info",
   "viewsRoot": "./src/views", 
-  "typesPath": "./src/types"
+  "typesPath": "./src/types",
+  "sharedLocals" : {
+    "importPath": "./src/types/viewSharedLocals.d.ts",
+    "typeName": "SharedLocals"
+  }
 }

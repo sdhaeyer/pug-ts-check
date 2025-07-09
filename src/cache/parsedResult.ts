@@ -76,26 +76,31 @@ class ParsedResultStore {
     if (totalErrors === 0) {
       Logger.info("No errors found in parse results.");
     } else {
-      Logger.info(`Found ${totalErrors} errors in ${totalerrorFiles} files.`);
+      Logger.error(`Found ${totalErrors} error(s) in ${totalerrorFiles} files.`);
     }
     Logger.info(`Total files scanned: ${totalFiles}`);
 
   }
   logSummaryAll() {
     for (const [file, result] of this.results.entries()) {
-      Logger.info(`[${file}] -> ${result.errors.length} error(s)`);
+      if( result.errors.length === 0) {
+        Logger.info(`[${file}] -> No errors found`);
+        continue;
+      }else{
+        Logger.error(`[${file}] -> ${result.errors.length} error(s)`);
+      }
     }
   }
   logErrors() {
-    let foundErro = false
+    let foundError = false;
     for (const [file, result] of this.results.entries()) {
       if (result.errors.length > 0) {
-        foundErro = true
-        Logger.info(`[${file}] -> ${result.errors.length} error(s)`);
+        foundError = true;
+        Logger.error(`[${file}] -> ${result.errors.length} error(s)`);
       }
 
     }
-    if (!foundErro) {
+    if (!foundError) {
       Logger.info("No errors found in parse results.");
     }
 

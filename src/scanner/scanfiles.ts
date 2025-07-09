@@ -17,13 +17,19 @@ import { parsedResultStore } from "../cache/parsedResult.js";
 
 import { lastScannedFile } from "../cache/lastScannedFile.js";
 import { generateViewLocals } from "../tsgen/generateViewLocals.js";
-import { getPugTsConfigPath } from "../config/loadPugConfig.js";
+
+import { getProjectContext } from "../cache/project-context.js";
 
 export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
   lastScannedFile.path = pugPath;
 
   dependencyGraph.clear(pugPath);
   parsedResultStore.clear(pugPath);
+  if(config.sharedLocals?.importPath) {
+    const abs = path.resolve(path.dirname(config.projectPath), config.sharedLocals.importPath)
+    dependencyGraph.add(pugPath, abs);
+  }
+
   const errors: ParseError[] = [];
   try {
 
@@ -54,7 +60,7 @@ export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: Pars
     }
 
     Logger.info("Generating TypeScript");
-    const tsResult = generateTsFromPugAst(ast, contract);
+    const tsResult = generateTsFromPugAst(ast, contract, getProjectContext());
 
     Logger.debug(`✅ Generated TypeScript for ${pugPath}:`);
 
@@ -98,6 +104,7 @@ const seen = new Set<string>();
 
 
 export function scanNewAndChanged(watcher?: FSWatcher):void  {
+  const ctx = getProjectContext();
   const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
   parsedResultStore.markStaleFiles()
 
@@ -105,7 +112,7 @@ export function scanNewAndChanged(watcher?: FSWatcher):void  {
     let pugFiles: string[] = [];
     if (!fs.existsSync(pugRoot)) {
 
-      throw new Error(`❌ Looking at pugPaths...\n [${pugPaths}] \n  Pugroot does not exist:\n  ${pugRoot}\n  Please check your configuration...  \n  ${getPugTsConfigPath()} \n Pugpaths must be relative to the projectpath given.`);
+      throw new Error(`❌ Looking at pugPaths...\n [${pugPaths}] \n  Pugroot does not exist:\n  ${pugRoot}\n  Please check your configuration...  \n  ${ctx.pugTsConfigPath} \n Pugpaths must be relative to the projectpath given.`);
     }
 
     if (!fs.statSync(pugRoot).isDirectory()) {

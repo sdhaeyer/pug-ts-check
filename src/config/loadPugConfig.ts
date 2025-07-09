@@ -6,9 +6,6 @@ import { Path } from "../utils/utils.js";
 import { askYesNo } from "../utils/askYesNo.js";
 
 
-
-let pugTsConfigPath: string | null = null;
-
 export interface PugTsConfig {
   tmpDir: string;
   projectPath: string;
@@ -19,8 +16,8 @@ export interface PugTsConfig {
 
 
 
-export async function setAndLoadPugTsConfigPath(configPath: string): Promise<void> {
-  pugTsConfigPath = configPath;
+export async function loadPugTsConfigPath(configPath: string): Promise<void> {
+  
 
   // loading ... 
   if (!fs.existsSync(configPath)) {
@@ -64,12 +61,6 @@ export async function setAndLoadPugTsConfigPath(configPath: string): Promise<voi
   });
 }
 
-export function getPugTsConfigPath(): string {
-  if (pugTsConfigPath) {
-    return pugTsConfigPath;
-  }
-  throw new Error(`❌ Pug TypeScript config path is not set.`);
-}
 
 function isSubpath(parent: string, child: string): boolean {
   const relative = Path.relative(parent, child);

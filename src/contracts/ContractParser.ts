@@ -8,10 +8,10 @@ import { ParsedContract } from "../types/types.js"; // fix if needed
 import { normalizeImportPath, toAbsolute } from "../utils/utils.js";
 import { config } from "../config/config.js";
 
-import { getTsProject } from "../validate/projectCache.js";
 
 import { dependencyGraph } from "../cache/dependencyGraph.js";
 import { Import } from "../utils/import.js";
+import { getProjectContext } from "../cache/project-context.js";
 
 
 
@@ -116,8 +116,9 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
 
      if (false) {
         // setup ts-morph
-        const project = getTsProject();
-
+        
+        const ctx = getProjectContext(); // ensure project context is initialized
+        const project = ctx.tsProject;
         Logger.debug(`Creating virtual TypeScript file`);
         const virtualFilePath = path.join(tmpDir, "VirtualExpectFile.ts");
         const sourceFile = project.createSourceFile(virtualFilePath, fileSource, { overwrite: true });
