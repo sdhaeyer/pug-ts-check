@@ -48,6 +48,7 @@ program
 
     if (options.config) {
       Logger.init(`Using custom Pug TypeScript config at: ${pugTsConfigPath}`);
+      config.pugTsConfigPath = pugTsConfigPath;
     }
 
     await loadPugTsConfigPath(pugTsConfigPath)
@@ -66,10 +67,10 @@ program
       config.pugPaths = options.pugPaths.map((p: string) => path.resolve(p));
     }
 
-    quickValidateConfig(config, pugTsConfigPath)
+    quickValidateConfig(config)
     
     // Make the project after using the config 
-    const ctx = initProjectContext(pugTsConfigPath);
+    const ctx = initProjectContext(config);
     Logger.init("Loading Pug ParsedResults from disk...");
     parsedResultStore.load();
 
@@ -160,7 +161,8 @@ program
             Logger.info(`Generating locals for all contracts...`);
             generateViewLocals();
           } else {
-            parsedResultStore.logFull();
+            console.error("Still errors in the project, not generating locals.");
+            //parsedResultStore.logFull();
 
           }
 
@@ -233,7 +235,8 @@ await program.parseAsync()
 
 
 
-function quickValidateConfig(config: Config, configPath: string ) {
+function quickValidateConfig(config: Config) {
+  const configPath = config.pugTsConfigPath;
   const message = `❌ Invalid configuration at ${configPath}:\n`; 
   if (!config.projectPath) {
     throw new Error(message + "Project path is not set in the configuration.");

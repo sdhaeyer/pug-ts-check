@@ -22,7 +22,7 @@ export async function loadPugTsConfigPath(configPath: string): Promise<void> {
   // loading ... 
   if (!fs.existsSync(configPath)) {
     Logger.warn(`⚠️ No pug.tsconfig.json found at ${configPath}, using built-in defaults.`);
-
+    return
   }
 
   const raw = fs.readFileSync(configPath, "utf8");
@@ -35,7 +35,7 @@ export async function loadPugTsConfigPath(configPath: string): Promise<void> {
     // Set it directly
     Object.assign(config, validated);
   
-    configSchema.parse(parsed);
+    configSchema.strip().parse(parsed);
   }catch (error) {
     throw new Error(`Unable to parse your config file: \n ${configPath}:\n ${error}`, error instanceof Error ? { cause: error } : undefined);
   }

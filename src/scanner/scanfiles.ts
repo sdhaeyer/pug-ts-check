@@ -104,7 +104,7 @@ const seen = new Set<string>();
 
 
 export function scanNewAndChanged(watcher?: FSWatcher):void  {
-  const ctx = getProjectContext();
+  
   const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
   parsedResultStore.markStaleFiles()
 
@@ -112,7 +112,7 @@ export function scanNewAndChanged(watcher?: FSWatcher):void  {
     let pugFiles: string[] = [];
     if (!fs.existsSync(pugRoot)) {
 
-      throw new Error(`❌ Looking at pugPaths...\n [${pugPaths}] \n  Pugroot does not exist:\n  ${pugRoot}\n  Please check your configuration...  \n  ${ctx.pugTsConfigPath} \n Pugpaths must be relative to the projectpath given.`);
+      throw new Error(`❌ Looking at pugPaths...\n [${pugPaths}] \n  Pugroot does not exist:\n  ${pugRoot}\n  Please check your configuration...  \n  ${config.pugTsConfigPath} \n Pugpaths must be relative to the projectpath given.`);
     }
 
     if (!fs.statSync(pugRoot).isDirectory()) {

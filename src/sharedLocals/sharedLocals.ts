@@ -5,7 +5,6 @@ import fs from "node:fs";
 import { getProjectContext } from "../cache/project-context.js";
 
 export function resolveSharedLocals(tsProject: Project): { importline: string, fields: string[] } {
-    const ctx = getProjectContext();
     const sharedConfig = config.sharedLocals;
 
     if (!sharedConfig) {
@@ -14,7 +13,11 @@ export function resolveSharedLocals(tsProject: Project): { importline: string, f
     const sharedFilePath = Path.resolve(config.projectPath, sharedConfig.importPath);
 
     if (!fs.existsSync(sharedFilePath)) {
-        throw new Error(`❌ SharedLocals file not found at: ${sharedFilePath}. Have a look at your configuration ${ctx.pugTsConfigPath} \n projectpath: ${config.projectPath} \nimportpath: ${sharedConfig.importPath}` );
+        let message = `❌ SharedLocals file not found at: ${sharedFilePath}.  \n projectpath: ${config.projectPath} \nimportpath: ${sharedConfig.importPath}`;
+        if (config.pugTsConfigPath){
+            message += `\nPlease check your configuration at: ${config.pugTsConfigPath}`;
+        }
+        throw new Error(message);
     }
 
     // Refresh the file if already loaded

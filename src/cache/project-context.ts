@@ -1,7 +1,7 @@
 
 import path from "node:path";
 import { Project } from "ts-morph";
-import { config } from "../config/config.js";
+import type { Config } from "../config/config.js";
 import { Logger } from "../utils/Logger.js";
 import { resolveSharedLocals } from "../sharedLocals/sharedLocals.js";
 import type { ProjectContext } from "../types/ProjectContext.js";
@@ -18,12 +18,11 @@ export function getProjectContext(): ProjectContext {
 }
 
 
-export function initProjectContext(pugTsConfigPath: string): ProjectContext {
+export function initProjectContext(config:Config): ProjectContext {
   if (_cachedContext) {
     Logger.warn("Project context is already initialized. Returning cached context.");
     return _cachedContext;
   } 
-
 
   const tsConfigFilePath = path.join(config.projectPath, "tsconfig.json");
 
@@ -42,16 +41,15 @@ export function initProjectContext(pugTsConfigPath: string): ProjectContext {
     This will likely cause TS6059 errors. Please move your .tmp under rootDir.`);
   }
 
+  const sharedLocalsMeta = resolveSharedLocals(tsProject);
+
   _cachedContext = {    
     tsProject,
-    pugTsConfigPath
+    
+    sharedLocalsMeta 
   };
 
 
-  if (config.sharedLocals) {
-    
-    _cachedContext.sharedLocalsMeta = resolveSharedLocals(tsProject);
-  }
 
   Logger.info("Project context ready.");
   

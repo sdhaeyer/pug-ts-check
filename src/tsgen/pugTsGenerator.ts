@@ -17,16 +17,16 @@ export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract, 
 
 
     const lineMap = new LineMap();
-
+    const addSharedFieldsIsEnabled = ctx.sharedLocalsMeta.fields.length > 0
 
     lineMap.addLine("// Generated TypeScript from Pug AST");
 
     // Add import for shared locals if defined and not already included
-    if (ctx.sharedLocalsMeta) {
+    if (addSharedFieldsIsEnabled) {
         lineMap.addLine(ctx.sharedLocalsMeta.importline);
 
     }
-    const sharedFields = ctx.sharedLocalsMeta?.fields ?? [];
+    const sharedFields = ctx.sharedLocalsMeta.fields;
     const viewFields = extractNames(contract.rawExpects);
     const allFields = [...new Set([...sharedFields, ...viewFields])];
 
@@ -36,7 +36,7 @@ export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract, 
     }
 
     let expectedType = contract.rawExpects
-    if (config.sharedLocals?.typeName) {
+    if (addSharedFieldsIsEnabled) {
         expectedType = `${config.sharedLocals.typeName} & ${expectedType}`;
     }
     
