@@ -13,7 +13,7 @@ export function generateViewLocals() {
     const store = parsedResultStore;
 
     const importMap = new Map<string, Set<string>>();
-    const importSet = new Set<string>();
+    
     const interfaceLines: string[] = [];
     const viewMapLines: string[] = [];
 
@@ -46,20 +46,25 @@ export function generateViewLocals() {
         // Generate interface block
         const fields = Object.entries(expects)
             .map(([k, t]) => `${k}: ${t};`)
+            .sort()
             .join(" ");
 
-        interfaceLines.push(`interface ${interfaceName} {${fields}}\n`);
+        interfaceLines.push(`interface ${interfaceName} {${fields}}`);
         viewMapLines.push(`  "${viewName}": ${interfaceName},`);
     }
 
+    const importSet = new Set<string>();
+    const sortedImportMap = new Map(
+        [...importMap.entries()].sort(([a], [b]) => a.localeCompare(b))
+    );
     // Assemble output
-    for (const [source, symbols] of importMap) {
+    for (const [source, symbols] of sortedImportMap) {
         const importStatement = `import type { ${Array.from(symbols).sort().join(", ")} } from "${source}"`;
         importSet.add(importStatement);
     }
     const importBlock = Array.from(importSet).join("\n");
-    const interfacesBlock = interfaceLines.join("\n");
-    const viewMapBlock = `export type ViewLocals = {\n${viewMapLines.join("\n")}\n};`;
+    const interfacesBlock = interfaceLines.sort().join("\n");
+    const viewMapBlock = `export type ViewLocals = {\n${viewMapLines.sort().join("\n")}\n};`;
 
     const finalOutput = [importBlock, "", interfacesBlock, "", viewMapBlock, ""].join("\n");
 
