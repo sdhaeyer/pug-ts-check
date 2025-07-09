@@ -1,9 +1,9 @@
 import { SyntaxKind } from "ts-morph";
-import { Logger } from "../utils/Logger";
+import { Logger } from "../utils/Logger.js";
 
-import { ParseError } from "../errors/ParseError";
+import { ParseError } from "../errors/ParseError.js";
 import path from "node:path";
-import { config } from "../config/config";
+import { config } from "../config/config.js";
 import fs from "node:fs";
 
 export const errorCodeDescriptions: Record<number, string> = {

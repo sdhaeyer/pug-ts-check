@@ -1,5 +1,5 @@
 import path from "node:path";
-import { Path } from "../utils/utils";
+import { Path } from "../utils/utils.js";
 
 class DependencyGraph {
   /**

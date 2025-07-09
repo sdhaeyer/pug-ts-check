@@ -1,9 +1,9 @@
 import fs from "fs";
 
-import { parseExpects, Path } from "../utils/utils";
-import { parsedResultStore } from "../cache/parsedResult";
-import { config } from "../config/config";
-import { Logger } from "../utils/Logger";
+import { parseExpects, Path } from "../utils/utils.js";
+import { parsedResultStore } from "../cache/parsedResult.js";
+import { config } from "../config/config.js";
+import { Logger } from "../utils/Logger.js";
 
 
 export function generateViewLocals() {

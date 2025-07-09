@@ -1,8 +1,8 @@
 import { Project } from "ts-morph";
-import { config } from "../config/config";
-import { Path } from "../utils/utils";
+import { config } from "../config/config.js";
+import { Path } from "../utils/utils.js";
 import fs from "node:fs";
-import { getProjectContext } from "../cache/project-context";
+import { getProjectContext } from "../cache/project-context.js";
 
 export function resolveSharedLocals(tsProject: Project): { importline: string, fields: string[] } {
     const ctx = getProjectContext();

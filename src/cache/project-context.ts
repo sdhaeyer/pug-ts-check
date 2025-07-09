@@ -1,10 +1,10 @@
 
 import path from "node:path";
 import { Project } from "ts-morph";
-import { config } from "../config/config";
-import { Logger } from "../utils/Logger";
-import { resolveSharedLocals } from "../sharedLocals/sharedLocals";
-import type { ProjectContext } from "../types/ProjectContext";
+import { config } from "../config/config.js";
+import { Logger } from "../utils/Logger.js";
+import { resolveSharedLocals } from "../sharedLocals/sharedLocals.js";
+import type { ProjectContext } from "../types/ProjectContext.js";
 
 let _cachedContext: ProjectContext | null = null;
 
