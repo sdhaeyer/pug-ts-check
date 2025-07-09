@@ -39,7 +39,7 @@ export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract, 
     if (addSharedFieldsIsEnabled) {
         expectedType = `${config.sharedLocals.typeName} & ${expectedType}`;
     }
-    
+
     lineMap.addLine(`export function render(locals: ${expectedType}) {`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
     lineMap.indentLevel++;
     lineMap.addLine(`const { ${allFields.join(", ")} } = locals;`, { lineNumber: contract.atExpectLine, file: contract.pugPath });
@@ -97,13 +97,19 @@ export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract, 
                 break;
             case "Tag":
                 if (node.name === "script") {
-                    // do not visit children of script tags, or handle separately
                     Logger.debug("Skipping script block");
-
-                } else {
-                    // ignore tags except maybe push text from text children
-                    if (node.block) visit(node.block);
+                    break;
                 }
+
+                // ✅ NEW: handle tag attributes like href=extraData.checkoutUrl
+                if (node.attrs) {
+                    for (const attr of node.attrs) {
+                        lineMap.addLine(`console.log(${attr.val}); // from ${attr.name} attr`, map);
+
+                    }
+                }
+
+                if (node.block) visit(node.block);
                 break;
 
             case "NamedBlock":
