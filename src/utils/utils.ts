@@ -109,6 +109,12 @@ export function splitTopLevel(input: string, delimiter: string): string[] {
   for (let i = 0; i < input.length; i++) {
     const char = input[i];
 
+    // Check if part of "=>"
+    if (char === ">" && input[i - 1] === "=") {
+      current += char;
+      continue;
+    }
+
     if ("<({[".includes(char)) {
       depth++;
     } else if (">)}]".includes(char)) {
@@ -125,7 +131,7 @@ export function splitTopLevel(input: string, delimiter: string): string[] {
   if (current.trim()) parts.push(current.trim());
 
   if (depth !== 0) {
-  throw new Error("Unbalanced delimiters in splitTopLevel input");
-}
+    throw new Error("Unbalanced delimiters in splitTopLevel input");
+  }
   return parts;
 }

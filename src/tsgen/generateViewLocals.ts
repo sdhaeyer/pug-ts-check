@@ -13,7 +13,7 @@ export function generateViewLocals() {
     const store = parsedResultStore;
 
     const importMap = new Map<string, Set<string>>();
-    
+
     const interfaceLines: string[] = [];
     const viewMapLines: string[] = [];
 
@@ -30,7 +30,7 @@ export function generateViewLocals() {
 
         for (const imp of contract.imports) {
             const { symbols, source } = { symbols: imp.importSymbols, source: imp.getRebasedPath(outDir) };
-            
+
             if (!importMap.has(source)) {
                 importMap.set(source, new Set());
             }
@@ -40,8 +40,20 @@ export function generateViewLocals() {
             }
         }
 
-        // Parse @expect block into key:type pairs
-        const expects = parseExpects(contract.rawExpects);
+        let expects;
+        try {
+            // Parse @expect block into key:type pairs
+            expects = parseExpects(contract.rawExpects);
+        } catch (error) {
+
+            if (error instanceof Error) {
+                Logger.error(`Failed to parse @expect block in ${contract.pugPath}: ${error.message}`);
+            } else {
+                Logger.error(`Failed to parse @expect block in ${contract.pugPath}: ${String(error)}`);
+            }
+            continue;
+
+        }
 
         // Generate interface block
         const fields = Object.entries(expects)
