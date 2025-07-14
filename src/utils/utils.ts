@@ -87,12 +87,10 @@ export function parseExpects(raw: string): Record<string, string> {
   const entries = splitTopLevel(trimmed, ",");
 
   for (const entry of entries) {
-    if (entry.indexOf(":") === -1) {
-      // no colon found, skip this entry
-      result[entry.trim()] = "any"; // what to do here ... todo
+    const [key, type] = splitTopLevel(entry, ":");
+    if (!key) {
+      result[entry.trim()] = "any"; // fallback
     } else {
-      const [key, type] = entry.split(":", 2);
-      if (!key) continue;
       result[key.trim()] = type.trim();
     }
   }
@@ -125,5 +123,9 @@ export function splitTopLevel(input: string, delimiter: string): string[] {
   }
 
   if (current.trim()) parts.push(current.trim());
+
+  if (depth !== 0) {
+  throw new Error("Unbalanced delimiters in splitTopLevel input");
+}
   return parts;
 }
