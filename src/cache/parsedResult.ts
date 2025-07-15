@@ -117,7 +117,7 @@ class ParsedResultStore {
   }
 
   save() {
-    const filePath = path.join(config.projectPath, "/parseResults.json")
+    const filePath = path.join(config.projectPath, config.cacheParseResultsPath)
     const safeResults = Array.from(this.results.entries()).map(([file, result]) => {
       const safeErrors = result.errors.map((err) => ({
         ...err,
@@ -137,7 +137,7 @@ class ParsedResultStore {
   }
 
   load() {
-    const filePath = path.join(config.projectPath, "/parseResults.json")
+    const filePath = path.join(config.projectPath, config.cacheParseResultsPath)
     if (!fs.existsSync(filePath)) {
       Logger.warn(`No persisted data found at ${filePath}`);
       return;

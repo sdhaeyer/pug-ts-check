@@ -13,6 +13,7 @@ export const configSchema = z.object({
     importPath: z.string().default("./src/types/viewSharedLocals.d.ts"),
     typeName: z.string().default("SharedLocals")
   }).default({}),
+  cacheParseResultsPath: z.string().default("./.tmp/pug.parseResults.json")
 });
 
 export type Config = z.infer<typeof configSchema>;
