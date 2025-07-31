@@ -26,14 +26,51 @@ When rendering Pug templates in a Node.js/Express app, mismatches between what's
 npm install pug-ts-check --save-dev
 ```
 
-You must also apply **two minor patches** to the `pug` compiler to allow typed mixin support and `//@` comment parsing. These can be installed via:
-I'm new to this pathces thing ... New to everything actually ... but i will probably add the patches in the git or more info somewhere else.
-
 ```bash
-npm install pug@patched-version-name
+npm install pug-ts-check --save-dev
 ```
 
-> (Details on patch contents and availability to be documented.)
+## ⚠️ **Critical: Pug Patches Required**
+
+**This tool requires two essential patches to the Pug compiler.** Without these patches, `pug-ts-check` will not work correctly.
+
+### Quick Setup with patch-package (Recommended)
+
+1. **Install dependencies:**
+   ```bash
+   npm install pug-ts-check --save-dev
+   npm install patch-package --save-dev
+   npm install pug@^3.0.2 pug-code-gen@^3.0.3 pug-linker@^4.0.0
+   ```
+
+2. **Copy patch files:**
+   ```bash
+   cp node_modules/pug-ts-check/patches/*.patch ./patches/
+   ```
+
+3. **Apply patches:**
+   ```bash
+   npx patch-package
+   ```
+
+4. **Auto-apply on install:**
+   ```json
+   // Add to your package.json scripts:
+   "postinstall": "patch-package"
+   ```
+
+### What the patches do:
+- **Enable `//@` comments** in extended templates (before `extends`)  
+- **Support typed mixin parameters** like `mixin card(title: string, count?: number)`
+
+📖 **Detailed instructions:** See [`patches/README.md`](./patches/README.md)
+
+### Future: Automated Solution
+
+We are working on providing pre-patched Pug packages or a patch automation tool to eliminate this manual step.
+
+**Current Status:** ⚠️ Manual patches required  
+**Planned:** ✅ Automated patch application or pre-patched packages
 
 ---
 

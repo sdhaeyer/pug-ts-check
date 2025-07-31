@@ -3,6 +3,7 @@ import { Command } from "commander";
 import chokidar from "chokidar";
 import path from "node:path";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { Logger } from "../utils/Logger.js";
 import { scanNewAndChanged, scanFile } from "../scanner/scanfiles.js";
 
@@ -18,13 +19,18 @@ import { generateViewLocals } from "../tsgen/generateViewLocals.js";
 import { getProjectContext, initProjectContext } from "../cache/project-context.js";
 import { Path } from "../utils/utils.js";
 
+// Get package.json version
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const packageJsonPath = path.join(__dirname, '../../package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
 const program = new Command();
 
 program
   .name("pug-ts-check")
   .description("Type-check Pug templates against TypeScript contracts")
-  .version("0.1.0")
+  .version(packageJson.version)
   .argument("[path]", "path to a .pug file or a directory")
   .option("--verbose", "enable verbose output")
   .option("--silent", "disable most logs")

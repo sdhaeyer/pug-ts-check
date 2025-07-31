@@ -1,0 +1,39 @@
+diff --git a/node_modules/pug-linker/index.js b/node_modules/pug-linker/index.js
+index 256d74b..3257dfe 100644
+--- a/node_modules/pug-linker/index.js
++++ b/node_modules/pug-linker/index.js
+@@ -15,11 +15,16 @@ function link(ast) {
+   );
+   var extendsNode = null;
+   if (ast.nodes.length) {
+-    var hasExtends = ast.nodes[0].type === 'Extends';
+-    checkExtendPosition(ast, hasExtends);
+-    if (hasExtends) {
+-      extendsNode = ast.nodes.shift();
++      // find the first Extends node
++    const firstExtendsIndex = ast.nodes.findIndex(n => n.type === 'Extends');
++    // changed so that it is allowed to have comments before extends ( does not have to be the first node any more.)
++    if (firstExtendsIndex !== -1) {
++      // store it
++      extendsNode = ast.nodes[firstExtendsIndex];
++      // remove it from ast.nodes
++      ast.nodes.splice(firstExtendsIndex, 1);
+     }
++    // actualy we don't have to check for multiple extends nodes, because the next error will also catch it.
+   }
+   ast = applyIncludes(ast);
+   ast.declaredBlocks = findDeclaredBlocks(ast);
+@@ -33,10 +38,12 @@ function link(ast) {
+         node.nodes.forEach(addNode);
+       } else if (node.type === 'Mixin' && node.call === false) {
+         mixins.push(node);
++      } else if (node.type === 'Comment') {
++        // Ignore comments
+       } else {
+         error(
+           'UNEXPECTED_NODES_IN_EXTENDING_ROOT',
+-          'Only named blocks and mixins can appear at the top level of an extending template',
++          'Found '+ node.type+ '. Only named blocks and mixins and comments can appear at the top level of an extending template, also no duplicate extend nodes allowed.',
+           node
+         );
+       }
