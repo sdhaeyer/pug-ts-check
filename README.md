@@ -1,3 +1,19 @@
+Hi, most of the README, is or was generated with AI, lots of the code too, or definitely with help. 
+
+Just that you know. 
+
+I became a bit of a pug lover ... :) the dog ;) , and needed a Typescript validation. Pug was new to me. Node as well, I have been a long time in Javascript ... I am getting older. But so, Typescript was new as well, and I fell a bit in love with Typescript, Pug, and Node/npm. 
+
+So basically, this is a Node npm package, that parses pug templates ... to see if what you're using is validly typed (scripted). 
+
+Which means if you change your code ... the program will check if everything in your pugs is still consistent. Lots of updates are possible; this is a working version that was handy for me ... so I stopped there a bit. Also not working on the project anymore where I was using it. Once I'm back there I will ... continue to improve. 
+
+I also created a simple VS-extension so you can (at least) click through on the import links above in the page to go to the classes/interfaces you defined. Might make that public as well later ... 
+
+Kr, Sam 2025-07-31
+
+
+
 # 🧩 pug-ts-check
 
 **`pug-ts-check`** is a **static TypeScript checker for Pug templates**. It performs offline analysis of your `.pug` views to ensure that the locals and mixin arguments match their expected TypeScript types.
@@ -60,8 +76,19 @@ npm install pug-ts-check --save-dev
    ```
 
 ### What the patches do:
-- **Enable `//@` comments** in extended templates (before `extends`)  
+- **Enable `//@` comments** in extended templates (before `extends`), i.e.  pug does not allow comments before or on the same level as a extends node. only includes , and maybe some othere stuff is allowed, it has been sometime. 
+
+This patch allowes comments on the root node level, and adds the comments in the new ast. I am using pugs buildin ast methodes for generation off the typescript. That is why i need it patched here. 
+
+I might file a pulling request later to pug. Because i dont see this as something breaking but them should or could know there code better. 
+Secondly:
 - **Support typed mixin parameters** like `mixin card(title: string, count?: number)`
+The second patch just stripts the typescript annotations from a mixin, so pug can still read it as it is build.
+`mixin card(title: string, count?: number) -> mixin card(title, count)` what pugs comipiler is expecting. 
+
+So to summarize, the first patch is needed for this plugin to work. (i might be wrong i realize now, not sure, so next comment might apply to both patches.)
+The second patch is needed, so that if you make this typescript suggestions to the pug file that the native pug compiler does not freack out them. Rethinking, and because the patches were not included in this project originaly, i supose everything this sides works with out the patches, but you'll need them on your pug version, so these extra things we add (so we/typescript know whats happening/ is being used), dont bother the teplate generation. 
+
 
 📖 **Detailed instructions:** See [`patches/README.md`](./patches/README.md)
 
