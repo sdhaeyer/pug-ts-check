@@ -76,18 +76,22 @@ npm install pug-ts-check --save-dev
    ```
 
 ### What the patches do:
-- **Enable `//@` comments** in extended templates (before `extends`), i.e.  pug does not allow comments before or on the same level as a extends node. only includes , and maybe some othere stuff is allowed, it has been sometime. 
+- **Enable `//@` comments** in extended templates (before `extends`), 
 
-This patch allowes comments on the root node level, and adds the comments in the new ast. I am using pugs buildin ast methodes for generation off the typescript. That is why i need it patched here. 
+i.e.  pug does not allow comments before or on the same level as a extends node. Only includes, and mixins are allowed, now this is changed to also allow comments.
 
-I might file a pulling request later to pug. Because i dont see this as something breaking but them should or could know there code better. 
+These comments now get included in the final html render. Maybe this is something to change. 
+
+I might file a pulling request later to pug. Because I don't see this as something breaking but them should or could know there code better. 
+
 Secondly:
 - **Support typed mixin parameters** like `mixin card(title: string, count?: number)`
-The second patch just stripts the typescript annotations from a mixin, so pug can still read it as it is build.
+
+The second patch stripts the typescript annotations from a mixin, so pug can still read it as it is building it's html.
+
 `mixin card(title: string, count?: number) -> mixin card(title, count)` what pugs comipiler is expecting. 
 
-So to summarize, the first patch is needed for this plugin to work. (i might be wrong i realize now, not sure, so next comment might apply to both patches.)
-The second patch is needed, so that if you make this typescript suggestions to the pug file that the native pug compiler does not freack out them. Rethinking, and because the patches were not included in this project originaly, i supose everything this sides works with out the patches, but you'll need them on your pug version, so these extra things we add (so we/typescript know whats happening/ is being used), dont bother the teplate generation. 
+So both patches are actually there so that if we add typescript annotations that pug compiler itself does not freak out and can still generate the HTML. 
 
 
 📖 **Detailed instructions:** See [`patches/README.md`](./patches/README.md)
