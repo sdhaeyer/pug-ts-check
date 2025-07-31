@@ -215,6 +215,12 @@ project-root/
 
 ---
 
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
 ## 🧠 Credits
 
 Created with ❤️ to bring modern type safety to template rendering.  

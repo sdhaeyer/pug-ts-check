@@ -1,0 +1,30 @@
+# Source files
+src/
+tests/
+tsconfig.json
+
+# Development files
+.tmp/
+chatgpt-progress/
+plan.md
+planA-2.md
+pug typescript checker template.txt
+pug.tsconfig.default.json
+pug.tsconfig.old.json
+.diff
+
+# Git
+.git/
+.gitignore
+
+# Node
+node_modules/
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

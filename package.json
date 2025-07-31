@@ -1,10 +1,39 @@
 {
     "name": "pug-ts-check",
     "version": "0.1.0",
+    "description": "Static TypeScript checker for Pug templates",
     "type": "module",
+    "license": "MIT",
+    "author": {
+        "name": "Sam D'haeyer",
+        "email": "sam.dhaeyer@gmail.com",
+        "url": "https://github.com/sdhaeyer"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/sdhaeyer/pug-ts-check.git"
+    },
+    "bugs": {
+        "url": "https://github.com/sdhaeyer/pug-ts-check/issues"
+    },
+    "homepage": "https://github.com/sdhaeyer/pug-ts-check#readme",
+    "keywords": [
+        "pug",
+        "typescript",
+        "type-checking",
+        "templates",
+        "static-analysis",
+        "express"
+    ],
     "bin": {
         "pug-ts-check": "./dist/cli/index.js"
     },
+    "main": "./dist/cli/index.js",
+    "files": [
+        "dist/",
+        "README.md",
+        "LICENSE"
+    ],
     "scripts": {
         "build": "tsc",
         "dev": "tsc --watch",
