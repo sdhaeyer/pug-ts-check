@@ -1,16 +1,33 @@
-# Pug Patches Required for pug-ts-check
+# Pug Patches for TypeScript Template Support
 
-`pug-ts-check` requires **two essential patches** to the standard Pug compiler to enable:
+## 🎯 **Key Point: Patches are for Template Compilation, Not pug-ts-check**
 
-1. **Comment parsing for `//@` annotations** - Allows the tool to read TypeScript import and type expectations
-2. **Typed mixin support** - Enables type checking of mixin parameters with TypeScript syntax
+**`pug-ts-check` works without these patches** - it can analyze your templates regardless. However, **your Pug templates need these patches to compile** when you use TypeScript annotations.
 
-## ⚠️ Critical Requirement
+### The Problem
+When you add TypeScript features to your Pug templates:
+- `//@import` comments before `extends` 
+- Typed mixin parameters like `mixin card(title: string, count?: number)`
 
-**These patches are REQUIRED** for `pug-ts-check` to function correctly. Without them:
-- `//@import` and `//@expect` comments won't be parsed
-- Typed mixin declarations will cause compilation errors
-- The tool will not work as intended
+**Standard Pug compiler will fail** with syntax errors.
+
+### The Solution
+Two minimal patches that make Pug compiler tolerant of TypeScript syntax:
+
+1. **Comment parsing for `//@` annotations** - Allows comments in extended templates
+2. **Typed mixin support** - Strips TypeScript annotations during compilation
+
+## ⚠️ When You Need These Patches
+
+**✅ You NEED patches if:**
+- You use `//@import` or `//@expect` comments
+- You write typed mixin parameters  
+- You want your templates to actually render/compile
+
+**❌ You DON'T need patches if:**
+- You only run `pug-ts-check` for analysis
+- You don't use TypeScript annotations in templates
+- You're just testing the tool
 
 ## Required Patches
 

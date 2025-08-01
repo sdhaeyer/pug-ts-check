@@ -46,9 +46,19 @@ npm install pug-ts-check --save-dev
 npm install pug-ts-check --save-dev
 ```
 
-## ⚠️ **Critical: Pug Patches Required**
+## ⚠️ **Important: Pug Patches for TypeScript Annotations**
 
-**This tool requires two essential patches to the Pug compiler.** Without these patches, `pug-ts-check` will not work correctly.
+**These patches are NOT required for `pug-ts-check` to work** - the tool can analyze your templates without them. However, **the patches ARE required for your Pug templates to compile correctly** when you add TypeScript annotations like `//@import` and typed mixin parameters.
+
+### Why You Need the Patches
+
+`pug-ts-check` reads your `.pug` files and validates the TypeScript annotations, but when you actually render your templates (in development or production), **standard Pug will fail to compile** templates with:
+
+- `//@` comments before `extends` statements
+- Typed mixin parameters like `mixin card(title: string, count?: number)`
+
+**Without patches:** ❌ Your templates won't compile  
+**With patches:** ✅ Your templates compile normally + get type checking
 
 ### Quick Setup with patch-package (Recommended)
 
@@ -76,22 +86,23 @@ npm install pug-ts-check --save-dev
    ```
 
 ### What the patches do:
-- **Enable `//@` comments** in extended templates (before `extends`), 
 
-i.e.  pug does not allow comments before or on the same level as a extends node. Only includes, and mixins are allowed, now this is changed to also allow comments.
+**Patch 1: Comment Support (`pug-linker`)**
+- **Problem:** Pug doesn't allow comments before or at the same level as `extends` nodes
+- **Solution:** Allow `//@` comments in extended templates (before `extends`)
+- **Result:** Your `//@import` and `//@expect` comments work in extended templates
 
-These comments now get included in the final html render. Maybe this is something to change. 
+*Note: These comments currently get included in the final HTML render - this might be changed in future.*
 
-I might file a pulling request later to pug. Because I don't see this as something breaking but them should or could know there code better. 
+**Patch 2: Typed Mixin Support (`pug-code-gen`)**  
+- **Problem:** Pug can't handle TypeScript syntax in mixin parameters
+- **Solution:** Strip TypeScript annotations from mixins during compilation
+- **Example:** `mixin card(title: string, count?: number)` → `mixin card(title, count)`
+- **Result:** You can write typed mixins that both compile AND get type-checked
 
-Secondly:
-- **Support typed mixin parameters** like `mixin card(title: string, count?: number)`
+### The Bottom Line
 
-The second patch stripts the typescript annotations from a mixin, so pug can still read it as it is building it's html.
-
-`mixin card(title: string, count?: number) -> mixin card(title, count)` what pugs comipiler is expecting. 
-
-So both patches are actually there so that if we add typescript annotations that pug compiler itself does not freak out and can still generate the HTML. 
+Both patches ensure that **when you add TypeScript annotations, the Pug compiler doesn't freak out and can still generate HTML**. The `pug-ts-check` tool works with or without patches, but your templates need the patches to actually render. 
 
 
 📖 **Detailed instructions:** See [`patches/README.md`](./patches/README.md)
