@@ -51,7 +51,7 @@ export function initProjectContext(config:Config): ProjectContext {
 
 
 
-  Logger.info("Project context ready.");
+  Logger.init("Project context ready.");
   
   return _cachedContext;
 }

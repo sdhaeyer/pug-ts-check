@@ -20,10 +20,10 @@ export const errorCodeDescriptions: Record<number, string> = {
 };
 
 
-export function logParseError(errors: ParseError[], pugFile: string) {
+export function logParseError(errors: ParseError[], pugFile: string, extraInfoEnabled = false) {
     if (errors.length > 0) {
         Logger.error(`❌ ${pugFile} --failed type-check!`);
-
+        Logger.error(`\x1b[31m${errors.length} errors found.\x1b[0m`);
     } else {
         Logger.info(`✅  ${".\\" + path.relative(config.projectPath, pugFile)} passed type-check!`);
     }
@@ -51,7 +51,7 @@ export function logParseError(errors: ParseError[], pugFile: string) {
                 if (!errorCodeDescriptions[errorTypeCode]) {
                     console.warn(`⚠️  Uncommon TypeScript error code ${errorTypeCode} encountered. Please check the TypeScript documentation for more details.`);
                 }
-                console.log(`VGT-ERROR: ${error.errorTypeCode} (${errorCodeDescriptions[errorTypeCode] ?? "Uncommon TypeScript error ... got to look it op or expand table here ..."})`);
+                Logger.error(`VGT-ERROR: ${error.errorTypeCode} (${errorCodeDescriptions[errorTypeCode] ?? "Uncommon TypeScript error ... got to look it op or expand table here ..."})`);
             }
             const generatedSourceFile = diagnostic.getSourceFile();
             if (!generatedSourceFile) {
@@ -88,19 +88,21 @@ export function logParseError(errors: ParseError[], pugFile: string) {
 
                     const symbol = expressionType.getSymbol();
                     if (expressionType.isClassOrInterface() && symbol) {
-
                         Logger.error(`Class or interface: ${symbol.getName()}`);
-
                         const declarations = symbol.getDeclarations();
                         declarations.forEach(decl => {
                             Logger.error(`At: ${decl.getSourceFile().getFilePath()}:${decl.getStartLineNumber()}`);
                         });
-                        // print its members
-                        const properties = expressionType.getProperties();
-                        Logger.error(`Members:`);
-                        for (const p of properties) {
-                            Logger.error(`  - ${p.getName()}`);
+                        if(extraInfoEnabled) {
+                            
+                            // print its members
+                            const properties = expressionType.getProperties();
+                            Logger.error(`Members:`);
+                            for (const p of properties) {
+                                Logger.error(`  - ${p.getName()}`);
+                            }
                         }
+
                     }
 
 
@@ -111,6 +113,10 @@ export function logParseError(errors: ParseError[], pugFile: string) {
 
         }
 
+    }
+    if(errors.length > 0) {
+        Logger.error("END ERRORS");
+        Logger.error("***************************************************************************");
     }
 }
 

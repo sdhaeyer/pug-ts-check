@@ -39,6 +39,7 @@ program
   .option("--tmpDir <dir>", "temporary dir")
   .option("--config <pug.tsconfig.json>", "path to Pug TypeScript config file")
   .action(async (targetPath, options) => {
+    console.clear();
     Logger.init("Pug Typescript Checker version " + packageJson.version);
 
     if (options.silent) {
@@ -123,21 +124,22 @@ program
 
         // Initial scanproject.finishedData.ThreadLength
         scanNewAndChanged(watcher);
+        console.clear();
         parsedResultStore.logSummary();
 
         Logger.init("✅ Initial scan complete. Watching for changes...");
+        console.log("\n📋 Interactive Commands: r=rescan | s=summary | e=errors | f=full log | g=generate TS | l=Show Locals | Ctrl+C=exit\n");
       });
 
       watcher.on("all", (event, file) => {
         file = path.resolve(file);
-
-        console.log("***************************************************");
+        console.log("\n".repeat(20));
+        console.clear();
+        console.log("*EVENT DETECTED**************************************************");
         Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
 
         if (event === "add" || event === "change") {
-          // Force terminal to scroll to bottom and follow new output
-          process.stdout.write('\u001b[999B'); // Move cursor way down to force scroll
-          console.clear();
+          
           let scanDepGraph = false;
           if (file.endsWith(".ts")) {
             const refreshed = ctx.tsProject.getSourceFile(file);
@@ -159,18 +161,16 @@ program
 
           }
           if (parsedResultStore.hasStale()) {
-            Logger.info(`🔍 Scanning dependency graph through stale`);
+            Logger.info(`🔍 Scanning dependency graph`);
             scanNewAndChanged(watcher);
-            Logger.info(`🔍 Scanning dependency graph complete.`);
           } else {
-            Logger.info(`Skipping dependency graph scan for ${file}`);
+            Logger.info(`Skipping dependency graph`);
+            if (!parsedResultStore.hasErrors()) generateViewLocals();
           }
           if (!parsedResultStore.hasErrors()) {
             Logger.info(`✅ All changes processed successfully.`);
-            Logger.info(`Generating locals for all contracts...`);
-            generateViewLocals();
           } else {
-            Logger.error("Still errors in the project, not generating locals.");
+            Logger.error("❌ Still errors in the project");
             //parsedResultStore.logFull();
 
           }
@@ -191,30 +191,35 @@ program
 
       process.stdin.on("data", (key: string) => {
         if (key === "r") {
-          console.log("manual rescan!");
+          Logger.info("manual rescan!");
           scanNewAndChanged(watcher);
           parsedResultStore.logSummary();
         }
         if (key === "s") {
-          console.log("summary!");
+          Logger.info("summary!");
           parsedResultStore.logSummary();
         }
         if (key === "e") {
           parsedResultStore.logErrors();
         }
         if (key === "f") {
-          console.log("full log!");
+          Logger.info("full log!");
           parsedResultStore.logFull();
         }
         if (key === "g") {
-          console.log("generating ts from last file");
+          Logger.info("generating ts from last file");
           if (lastScannedFile.path) {
             const { contract, errors, rawGeneratedTs } = scanFile(lastScannedFile.path, watcher);
             logSnippet(0, 500, rawGeneratedTs?.split(/\r?\n/) || []);
           } else {
-            console.error("No last scanned file found.");
+            Logger.error("No last scanned file found.");
           }
 
+        }
+        if (key === "l") {
+          const outDir = Path.resolve(config.projectPath, config.typesPath);
+          const outputPath = Path.resolve(outDir, "viewlocals.d.ts");
+          Logger.info(`${outputPath}`);
         }
         if (key === "\u0003") {
           Logger.info("Exiting... & saving results");

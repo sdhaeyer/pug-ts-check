@@ -92,9 +92,9 @@ export function generateViewLocals() {
     const previous = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, "utf8") : "";
     if (previous !== finalOutput) {
         fs.writeFileSync(outputPath, finalOutput);
-        Logger.info(`🟢 viewlocals.d.ts written to \n"${outputPath}"`);
+        Logger.debug(`🟢 viewlocals.d.ts written to \n"${outputPath}"`);
     } else {
-        Logger.info(`🟡 viewlocals.d.ts unchanged at \n"${outputPath}"`);
+        Logger.debug(`🟡 viewlocals.d.ts unchanged at \n"${outputPath}"`);
     }
 }
 

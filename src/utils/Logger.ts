@@ -30,13 +30,13 @@ class LoggerClass {
     return LOG_PRIORITIES[this.level] >= LOG_PRIORITIES[level];
   }
 
-  private log(level: LogLevel, colorCode: string, label: string, ...args: any[]) {
+  log(level: LogLevel, colorCode: number, label: string, ...args: any[]) {
     if (!this.shouldLog(level)) return;
     if(level === "error"){
-      console.error(`${colorCode}[${label}]\x1b[0m`, ...formatArgs(args));
+      console.error(`\x1b[${colorCode}m[${label}]\x1b[0m`, ...formatArgs(args));
       return;
     }else{
-      console.log(`${colorCode}[${label}]\x1b[0m`, ...formatArgs(args));
+      console.log(`\x1b[${colorCode}m[${label}]\x1b[0m`, ...formatArgs(args));
     }
     
   }
@@ -63,7 +63,7 @@ class LoggerClass {
        colorCode = 33; // Yellow
        label = "INIT";
     }
-    this.log(level, `\x1b[${colorCode}m`, label, ...args);
+    this.log(level, colorCode, label, ...args);
   }
   info(...args: any[]) { this.logLevel("info", ...args); }
   extraInfo(...args: any[]) { this.logLevel("extraInfo", ...args); }

@@ -22,6 +22,7 @@ import { getProjectContext } from "../cache/project-context.js";
 
 export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
   lastScannedFile.path = pugPath;
+  Logger.log("info", 33, "RESCAN", pugPath);
 
   dependencyGraph.clear(pugPath);
   parsedResultStore.clear(pugPath);
@@ -38,7 +39,7 @@ export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: Pars
     //console.info(`Running type-check for Pug file: ${pugPath}`);
     const pugSource = fs.readFileSync(pugPath, "utf8");
 
-    Logger.info("Getting contract")
+    Logger.debug("Getting contract")
     const { contract: contract, errors: contractErrors } = parseContract(pugPath, pugSource);
     if (!contract || contractErrors.length > 0) {
       errors.push(...contractErrors);
@@ -49,7 +50,7 @@ export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: Pars
     // console.log(`✅ xxxxx Parsed contract for ${pugPath}:`);
     // console.log(contract)
 
-    Logger.info("Getting AST")
+    Logger.debug("Getting AST")
     const { ast: ast, errors: precompileErrors } = precompilePug(pugPath, pugSource);
     errors.push(...precompileErrors);
 
@@ -59,12 +60,12 @@ export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: Pars
       return { contract: contract, errors };
     }
 
-    Logger.info("Generating TypeScript");
+    Logger.debug("Generating TypeScript");
     const tsResult = generateTsFromPugAst(ast, contract, getProjectContext());
 
     Logger.debug(`✅ Generated TypeScript for ${pugPath}:`);
 
-    Logger.info("Validating TypeScript");
+    Logger.debug("Validating TypeScript");
     let typescriptValidateErrors = validateGeneratedTs(tsResult.tsSource, tsResult.lineMap, pugPath);
 
     errors.push(...typescriptValidateErrors);
@@ -76,7 +77,7 @@ export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: Pars
         const importPath = normalizeImportPath(imp.getAbsolutePath());
         if (importPath && !seen.has(importPath)) {
           watcher.add(importPath);
-          Logger.info(`-> Added import to watcher! ${importPath}`);
+          Logger.debug(`-> Added import to watcher! ${importPath}`);
           seen.add(importPath);
         }
 
@@ -139,11 +140,12 @@ export function scanNewAndChanged(watcher?: FSWatcher):void  {
         needsRescan = existing.stale;
       }
       if (needsRescan) {
+        
         const { contract, errors } = scanFile(pugFile, watcher);
         
       }
     }
-    Logger.info(` Type-check completed for all changed Pug files in ${pugRoot}`);
+    Logger.debug(` Type-check completed for all changed Pug files in ${pugRoot}`);
     if(!parsedResultStore.hasErrors()) {
       generateViewLocals();
     }

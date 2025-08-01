@@ -155,7 +155,7 @@ class ParsedResultStore {
         dependencyGraph.graph.set(file, new Set(deps));
       }
 
-      Logger.info(`Loaded parse results from ${filePath}`);
+      Logger.init(`Loaded parse results from ${filePath}`);
 
       for (const [file, result] of this.getAll()) {
         if (result.contract) {
@@ -192,7 +192,7 @@ class ParsedResultStore {
           const depResult = this.get(dep);
           if (depResult) {
             depResult.stale = true;
-            Logger.info(`[STALE] Marking dependent ${dep} as stale due to changes in ${file}`);
+            Logger.debug(`[STALE] Marking dependent ${dep} as stale due to changes in ${file}`);
           } else {
             Logger.warn(`[MISSING] Dependent ${dep} not found in store, cannot mark as stale`);
           }
