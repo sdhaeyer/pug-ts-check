@@ -1,5 +1,5 @@
 import { SyntaxKind } from "ts-morph";
-import { Logger } from "../utils/Logger.js";
+import { Logger, LogLevel } from "../utils/Logger.js";
 
 import { ParseError } from "../errors/ParseError.js";
 import path from "node:path";
@@ -72,7 +72,7 @@ export function logParseError(errors: ParseError[], pugFile: string) {
             Logger.debug(`OriLine: ${line} - src : ${sourceLines[line - 1]}`);
 
             const snippetRadius = 5; // lines before/after
-            logSnippet(line, snippetRadius, sourceLines);
+            logSnippet(line, snippetRadius, sourceLines, "debug");
 
 
             const node = generatedSourceFile.getDescendantAtPos(pos);
@@ -115,13 +115,13 @@ export function logParseError(errors: ParseError[], pugFile: string) {
 }
 
 
-export function logSnippet(line: number, snippetRadius: number, sourceLines: string[]) {
+export function logSnippet(line: number, snippetRadius: number, sourceLines: string[], logLevel: LogLevel = "info") {
     const snippetStart = Math.max(0, line - 1 - snippetRadius);
     const snippetEnd = Math.min(sourceLines.length, line + snippetRadius);
 
-    Logger.info(`Code snippet around line ${line}:`);
+    Logger.logLevel(logLevel,`Code snippet around line ${line}:`);
     for (let i = snippetStart; i < snippetEnd; i++) {
         const lineMarker = (i + 1 === line) ? "👉" : "  ";
-        Logger.info(`${lineMarker} ${i + 1}: ${sourceLines[i]}`);
+        Logger.logLevel(logLevel, `${lineMarker} ${i + 1}: ${sourceLines[i]}`);
     }
 }

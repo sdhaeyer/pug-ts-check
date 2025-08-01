@@ -39,7 +39,7 @@ program
   .option("--tmpDir <dir>", "temporary dir")
   .option("--config <pug.tsconfig.json>", "path to Pug TypeScript config file")
   .action(async (targetPath, options) => {
-
+    Logger.init("Pug Typescript Checker version " + packageJson.version);
 
     if (options.silent) {
       Logger.setLevel("silent");
@@ -135,6 +135,9 @@ program
         Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
 
         if (event === "add" || event === "change") {
+          // Force terminal to scroll to bottom and follow new output
+          process.stdout.write('\u001b[999B'); // Move cursor way down to force scroll
+          console.clear();
           let scanDepGraph = false;
           if (file.endsWith(".ts")) {
             const refreshed = ctx.tsProject.getSourceFile(file);
@@ -167,7 +170,7 @@ program
             Logger.info(`Generating locals for all contracts...`);
             generateViewLocals();
           } else {
-            console.error("Still errors in the project, not generating locals.");
+            Logger.error("Still errors in the project, not generating locals.");
             //parsedResultStore.logFull();
 
           }
@@ -197,7 +200,6 @@ program
           parsedResultStore.logSummary();
         }
         if (key === "e") {
-          console.log("error log!");
           parsedResultStore.logErrors();
         }
         if (key === "f") {

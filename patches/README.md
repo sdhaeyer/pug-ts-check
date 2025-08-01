@@ -25,8 +25,6 @@ Two minimal patches that make Pug compiler tolerant of TypeScript syntax:
 - You want your templates to actually render/compile
 
 **❌ You DON'T need patches if:**
-- You only run `pug-ts-check` for analysis
-- You don't use TypeScript annotations in templates
 - You're just testing the tool
 
 ## Required Patches

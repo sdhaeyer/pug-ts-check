@@ -7,7 +7,7 @@ function formatArgs(args: any[]) {
   return foundMulti ? ["[MULTILINE]\n", ...args] : args;
 }
 
-type LogLevel = "silent" | "error" | "warn" | "init" | "info" | "debug" | "extraInfo";
+export type LogLevel = "silent" | "error" | "warn" | "init" | "info" | "debug" | "extraInfo";
 
 const LOG_PRIORITIES: Record<LogLevel, number> = {
   silent: 0,
@@ -30,17 +30,47 @@ class LoggerClass {
     return LOG_PRIORITIES[this.level] >= LOG_PRIORITIES[level];
   }
 
-  log(level: LogLevel, colorCode: string, label: string, ...args: any[]) {
-    if (level !== "error" && !this.shouldLog(level)) return;
-    console.log(`${colorCode}[${label}]\x1b[0m`, ...formatArgs(args));
+  private log(level: LogLevel, colorCode: string, label: string, ...args: any[]) {
+    if (!this.shouldLog(level)) return;
+    if(level === "error"){
+      console.error(`${colorCode}[${label}]\x1b[0m`, ...formatArgs(args));
+      return;
+    }else{
+      console.log(`${colorCode}[${label}]\x1b[0m`, ...formatArgs(args));
+    }
+    
   }
 
-  info(...args: any[]) { this.log("info", "\x1b[36m", "INFO", ...args); }
-  extraInfo(...args: any[]) { this.log("extraInfo", "\x1b[36m", "EXTRA", ...args); }
-  init(...args: any[]) { this.log("init", "\x1b[33m", "INIT", ...args); }
-  warn(...args: any[]) { this.log("warn", "\x1b[33m", "WARN", ...args); }
-  error(...args: any[]) { console.error(`\x1b[31m[ERROR]\x1b[0m`, ...formatArgs(args)); }
-  debug(...args: any[]) { this.log("debug", "\x1b[35m", "DEBUG", ...args); }
+  logLevel(level: LogLevel, ...args: any[]) {
+    let colorCode:number = 37; // Default to white
+    let label:string = level.toUpperCase();
+    if(level === "info") {
+        colorCode = 36; // Cyan
+        label = "INFO";
+    } else if (level === "extraInfo") {
+        colorCode = 36; // Cyan
+        label = "EXTRA INFO";
+    } else if (level === "debug") {
+        colorCode = 35; // Magenta
+        label = "DEBUG";
+    } else if (level === "warn") {
+        colorCode = 33; // Yellow
+        label = "WARN";
+    } else if (level === "error") {
+       colorCode = 31; // Red
+       label = "ERROR";
+    } else if (level === "init") {
+       colorCode = 33; // Yellow
+       label = "INIT";
+    }
+    this.log(level, `\x1b[${colorCode}m`, label, ...args);
+  }
+  info(...args: any[]) { this.logLevel("info", ...args); }
+  extraInfo(...args: any[]) { this.logLevel("extraInfo", ...args); }
+  init(...args: any[]) { this.logLevel("init", ...args); }
+  warn(...args: any[]) { this.logLevel("warn", ...args); }
+  error(...args: any[]) { this.logLevel("error", ...args); }
+  debug(...args: any[]) { this.logLevel("debug", ...args); }
 }
 
 export const Logger = new LoggerClass();

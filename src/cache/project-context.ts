@@ -26,7 +26,7 @@ export function initProjectContext(config:Config): ProjectContext {
 
   const tsConfigFilePath = path.join(config.projectPath, "tsconfig.json");
 
-  Logger.info("Creating new TypeScript project instance...");
+  Logger.init("Creating new TypeScript project instance...");
   Logger.debug(`Using tsconfig at: ${tsConfigFilePath}`);
 
   const tsProject = new Project({ tsConfigFilePath });
