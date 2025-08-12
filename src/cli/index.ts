@@ -266,7 +266,7 @@ function quickValidateConfig(config: Config) {
     for (const pugPath of config.pugPaths) {
       const abs = Path.resolve(config.projectPath, pugPath);
       if (!fs.existsSync(abs)) {
-        throw new Error(message + `Pug path does not exist: ${abs}`);
+        throw new Error(message + `Scan folder ${pugPath} does not exist, adjust your config file. `);
       }
     }
     if (!config.viewsRoot) {

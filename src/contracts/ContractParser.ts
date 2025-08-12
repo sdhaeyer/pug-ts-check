@@ -92,7 +92,8 @@ export function parseContract(pugPath: string, pugSource?: string): { contract: 
     }
 
     if (!contract.rawExpects) {
-        errors.push(new ParseError("ContractParseError: No //@expect block found; please add one to your Pug file.", pugPath, 0));
+        contract.rawExpects = "{}";
+        // errors.push(new ParseError("ContractParseError: No //@expect block found; please add one to your Pug file.", pugPath, 0));
 
     }
 
