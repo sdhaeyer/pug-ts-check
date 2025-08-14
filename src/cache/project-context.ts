@@ -33,12 +33,18 @@ export function initProjectContext(config:Config): ProjectContext {
 
   const tmpPath = path.resolve(process.cwd(), config.projectPath, config.tmpDir);
   const rootDir = path.resolve(tsProject.getCompilerOptions().rootDir ?? "");
-
   if (rootDir && !tmpPath.startsWith(rootDir)) {
     Logger.warn(`⚠️  Temporary file path is outside of configured rootDir:
     tmpPath: ${tmpPath}
     rootDir: ${rootDir}
-    This will likely cause TS6059 errors. Please move your .tmp under rootDir.`);
+    This will likely cause TS6059 errors.
+    To fix this, set your 'tmpDir' in the config file to be a subdirectory of your 'rootDir'.
+    Example:
+      {
+        "projectPath": "${config.projectPath}",
+        "tmpDir": "${path.relative(config.projectPath, rootDir)}/.tmp"
+      }
+    Please move your .tmp directory under rootDir.`);
   }
 
   const sharedLocalsMeta = resolveSharedLocals(tsProject);

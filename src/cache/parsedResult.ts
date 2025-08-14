@@ -132,8 +132,9 @@ class ParsedResultStore {
       ).map(([k, v]) => [k, Array.from(v)]),
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(persisted, null, 2), "utf8");
-    Logger.info(`Saved parse results to ${filePath}`);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(persisted, null, 2), "utf8");
+  Logger.info(`Saved parse results to ${filePath}`);
   }
 
   load() {

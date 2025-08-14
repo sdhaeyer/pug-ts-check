@@ -39,7 +39,7 @@ program
   .option("--tmpDir <dir>", "temporary dir")
   .option("--config <pug.tsconfig.json>", "path to Pug TypeScript config file")
   .action(async (targetPath, options) => {
-    console.clear();
+    
     Logger.init("Pug Typescript Checker version " + packageJson.version);
 
     if (options.silent) {
@@ -124,7 +124,7 @@ program
 
         // Initial scanproject.finishedData.ThreadLength
         scanNewAndChanged(watcher);
-        console.clear();
+        
         parsedResultStore.logSummary();
 
         Logger.init("✅ Initial scan complete. Watching for changes...");
@@ -134,7 +134,7 @@ program
       watcher.on("all", (event, file) => {
         file = path.resolve(file);
         console.log("\n".repeat(20));
-        console.clear();
+        
         console.log("*EVENT DETECTED**************************************************");
         Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
 
@@ -286,17 +286,19 @@ function quickValidateConfig(config: Config) {
       }
     }
     if (!config.sharedLocals) {
-      //optional is ok
+      // optional is ok
     } else {
       if (!config.sharedLocals.importPath) {
         throw new Error(message + "Shared locals import path is not set in the configuration.");
       } else {
         const abs = Path.resolve(config.projectPath, config.sharedLocals.importPath);
         if (!fs.existsSync(abs)) {
-          throw new Error(message + `Shared locals import path does not exist: ${abs}`);
+          // Auto-create empty file if missing
+          fs.mkdirSync(Path.dirname(abs), { recursive: true });
+          fs.writeFileSync(abs, 'export type SharedLocals = {}\n', 'utf8');
+          Logger.info(`Auto-created stub SharedLocals type at: ${abs}`);
         }
       }
-
     }
 
   }

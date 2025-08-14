@@ -128,6 +128,17 @@ We are working on providing pre-patched Pug packages or a patch automation tool 
   "typesPath": "./src/types"
 }
 ```
+or e.g.
+```json
+{
+  "tmpDir": "./src/.tmp",
+  "projectPath": "./",
+  "pugPaths": ["./views"],
+  "logLevel": "info",
+  "viewsRoot": "./views",
+  "typesPath": "./types"
+}
+```
 
 ### Key Fields
 
