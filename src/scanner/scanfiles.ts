@@ -61,7 +61,8 @@ export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: Pars
     }
 
     Logger.debug("Generating TypeScript");
-    const tsResult = generateTsFromPugAst(ast, contract, getProjectContext());
+    const ctx = getProjectContext(); // Ensure project context is initialized
+    const tsResult = generateTsFromPugAst(ast, contract, ctx.sharedLocalsMeta);
 
     Logger.debug(`✅ Generated TypeScript for ${pugPath}:`);
 

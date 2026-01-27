@@ -29,6 +29,32 @@
         "pug-ts-check": "./dist/cli/index.js"
     },
     "main": "./dist/cli/index.js",
+    "exports": {
+        "./config": {
+            "import": "./dist/config/config.js",
+            "types": "./dist/config/config.d.ts"
+        },
+        "./config/loader": {
+            "import": "./dist/config/loadPugConfig.js",
+            "types": "./dist/config/loadPugConfig.d.ts"
+        },
+        "./precompile": {
+            "import": "./dist/precompile/PugPrecompiler.js",
+            "types": "./dist/precompile/PugPrecompiler.d.ts"
+        },
+        "./contracts": {
+            "import": "./dist/contracts/ContractParser.js",
+            "types": "./dist/contracts/ContractParser.d.ts"
+        },
+        "./tsgen": {
+            "import": "./dist/tsgen/pugTsGenerator.js",
+            "types": "./dist/tsgen/pugTsGenerator.d.ts"
+        },
+        "./sharedLocals": {
+            "import": "./dist/sharedLocals/sharedLocals.js",
+            "types": "./dist/sharedLocals/sharedLocals.d.ts"
+        }
+    },
     "files": [
         "dist/",
         "patches/",

@@ -4,8 +4,12 @@ import { Logger } from "../utils/Logger.js";
 import { LineMap, type MappedLine, type ParsedContract } from "../types/types.js";
 import { extractNames } from "../utils/utils.js";
 
-import { ProjectContext } from "../types/ProjectContext.js";
 import { config } from "../config/config.js";
+
+export interface SharedLocalsMeta {
+    fields: string[];
+    importline: string;
+}
 
 /**
  * Generate TypeScript source from Pug AST.
@@ -13,20 +17,20 @@ import { config } from "../config/config.js";
  */
 
 
-export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract, ctx: ProjectContext): { tsSource: string; lineMap: MappedLine[] } {
+export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract, sharedLocalsMeta: SharedLocalsMeta): { tsSource: string; lineMap: MappedLine[] } {
 
 
     const lineMap = new LineMap();
-    const addSharedFieldsIsEnabled = ctx.sharedLocalsMeta.fields.length > 0
+    const addSharedFieldsIsEnabled = sharedLocalsMeta.fields.length > 0
 
     lineMap.addLine("// Generated TypeScript from Pug AST");
 
     // Add import for shared locals if defined and not already included
     if (addSharedFieldsIsEnabled) {
-        lineMap.addLine(ctx.sharedLocalsMeta.importline);
+        lineMap.addLine(sharedLocalsMeta.importline);
 
     }
-    const sharedFields = ctx.sharedLocalsMeta.fields;
+    const sharedFields = sharedLocalsMeta.fields;
     const viewFields = extractNames(contract.rawExpects);
     const allFields = [...new Set([...sharedFields, ...viewFields])];
 
