@@ -41,7 +41,9 @@ export function precompilePug(filePath: string, fileSource?: string, caller?: st
         try {
             tokens = lex(source, { filename: absolutePath });
         } catch (err) {
-            errors.push(new ParseError(`Precompile: Failed to lex Pug file: ${absolutePath} - ${err}`, absolutePath, -1));
+            const errMsg = err instanceof Error ? err.message : String(err);
+            const fullErrStr = err instanceof Error && err.stack ? `${errMsg}\n${err.stack}` : errMsg;
+            errors.push(new ParseError(`Precompile: Failed to lex Pug file: ${absolutePath} - ${fullErrStr}`, absolutePath, -1));
             return { ast: undefined, errors };
         }
 
@@ -378,12 +380,31 @@ export function resolvePugIncludePath(currentFile: string, pugPath: string): str
     // maybe to ad multiple viewroots ... 
     let viewsRoot = path.join(config.projectPath, config.viewsRoot);
 
-
+    let resolvedPath;
     if (pugPath.startsWith("/")) {
         // absolute pug path, relative to views root
-        return path.join(viewsRoot, pugPath);
+        resolvedPath = path.join(viewsRoot, pugPath);
     } else {
         // relative path
-        return path.resolve(path.dirname(currentFile), pugPath);
+        resolvedPath = path.resolve(path.dirname(currentFile), pugPath);
     }
+
+    // Log debug info to the VS Code OutputChannel via Logger and to a file
+    const logMsg = [
+        '[PUG-RESOLVE]',
+        'config.viewsRoot: ' + config.viewsRoot,
+        'viewsRoot: ' + viewsRoot,
+        'currentFile: ' + currentFile,
+        'pugPath: ' + pugPath,
+        'resolvedPath: ' + resolvedPath,
+        '---'
+    ].join('\n');
+    Logger.info(logMsg);
+    try {
+        const debugLogPath = 'C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/pug-path-debug.log';
+        fs.appendFileSync(debugLogPath, logMsg + '\n');
+    } catch (e) {
+        // ignore file write errors
+    }
+    return resolvedPath;
 }
