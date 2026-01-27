@@ -47,7 +47,7 @@ export function initProjectContext(config:Config): ProjectContext {
     Please move your .tmp directory under rootDir.`);
   }
 
-  const sharedLocalsMeta = resolveSharedLocals(tsProject);
+  const sharedLocalsMeta = resolveSharedLocals(config);
 
   _cachedContext = {    
     tsProject,

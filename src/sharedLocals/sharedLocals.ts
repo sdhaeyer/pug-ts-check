@@ -1,15 +1,16 @@
-import { Project } from "ts-morph";
-import { config } from "../config/config.js";
+import type { Config } from "../config/config.js";
 import { Path } from "../utils/utils.js";
 import fs from "node:fs";
-import { getProjectContext } from "../cache/project-context.js";
+import { Logger } from "../utils/Logger.js";
 
-export function resolveSharedLocals(tsProject: Project): { importline: string, fields: string[] } {
+export function resolveSharedLocals(config: Config): { importline: string, fields: string[] } {
     const sharedConfig = config.sharedLocals;
 
     if (!sharedConfig) {
-        throw new Error("Shared locals configuration is not defined in config");
+        Logger.debug("No shared locals configuration found");
+        return { importline: "", fields: [] };
     }
+
     const sharedFilePath = Path.resolve(config.projectPath, sharedConfig.importPath);
 
     if (!fs.existsSync(sharedFilePath)) {
@@ -17,20 +18,37 @@ export function resolveSharedLocals(tsProject: Project): { importline: string, f
         if (config.pugTsConfigPath){
             message += `\nPlease check your configuration at: ${config.pugTsConfigPath}`;
         }
-        throw new Error(message);
+        Logger.warn(message);
+        return { importline: "", fields: [] };
     }
 
-    // Refresh the file if already loaded
-    const existing = tsProject.getSourceFile(sharedFilePath);
-    if (existing) tsProject.removeSourceFile(existing);
+    try {
+        const content = fs.readFileSync(sharedFilePath, 'utf-8');
 
-    const sourceFile = tsProject.addSourceFileAtPath(sharedFilePath);
+        // Extract type alias: type SharedLocals = { field1: string; field2: boolean };
+        const typeRegex = new RegExp(
+            `type\\s+${sharedConfig.typeName}\\s*=\\s*\\{([^}]+)\\}`,
+            's'
+        );
+        const match = content.match(typeRegex);
 
-    const sharedType = sourceFile.getTypeAliasOrThrow(sharedConfig.typeName).getType();
+        if (!match) {
+            Logger.warn(`Type ${sharedConfig.typeName} not found in ${sharedFilePath}`);
+            return { importline: "", fields: [] };
+        }
 
-    const properties = sharedType.getProperties();
-    const sharedFields = properties.map(p => p.getName());  // ['user', 'cart', 'isAdmin']
-    const absPath = Path.resolve(config.projectPath, sharedConfig.importPath);
+        // Extract field names from type definition
+        const sharedFields = match[1]
+            .split(';')
+            .map(line => line.trim().split(':')[0].trim())
+            .filter(field => field.length > 0);
 
-    return { importline: `import type { ${sharedConfig.typeName} } from '${absPath}';`, fields: sharedFields };
+        const importline = `import type { ${sharedConfig.typeName} } from '${sharedFilePath}';`;
+
+        Logger.debug(`Resolved shared locals: ${sharedFields.join(', ')}`);
+        return { importline, fields: sharedFields };
+    } catch (error) {
+        Logger.warn(`Failed to resolve shared locals: ${error}`);
+        return { importline: "", fields: [] };
+    }
 }
