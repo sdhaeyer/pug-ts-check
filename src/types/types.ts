@@ -1,7 +1,22 @@
-
 import { Import } from "../utils/import.js";
 import { Logger } from "../utils/Logger.js";
 
+export interface GeneratedMapping {
+  // Source location in Pug
+  pugFile: string; // Which Pug file (because of extends/includes)
+  pugLine: number;
+  pugColumn?: number;
+  pugContext?: string; // e.g., "tag attribute", "code block", "text interpolation"
+  
+  // Symbol info
+  symbol: string;
+  type: 'variable' | 'function' | 'class' | 'property' | 'other' | 'local' | 'reference';
+  
+  // Generated TS location
+  tsLine: number;
+  tsColumn?: number;
+  tsCode?: string; // The actual TS code line that references this symbol
+}
 
 export interface MappedLine {
   lineNumber: number;
