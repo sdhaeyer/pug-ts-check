@@ -61,6 +61,10 @@
         "./types/PugAst": {
             "types": "./dist/types/PugAst.d.ts",
             "import": "./dist/types/PugAst.js"
+        },
+        "./utils/Logger": {
+            "types": "./dist/utils/Logger.d.ts",
+            "import": "./dist/utils/Logger.js"
         }
     },
     "files": [
@@ -80,19 +84,20 @@
         "chokidar": "^4.0.3",
         "commander": "^14.0.0",
         "glob": "^11.0.3",
+        "patch-package": "^8.0.1",
         "pug": "^3.0.2",
         "pug-lexer": "^5.0.1",
         "pug-parser": "^6.0.0",
         "ts-morph": "^20.0.0",
         "typescript": "^5.8.3",
-        "zod": "^3.25.76",
-        "patch-package": "^8.0.1"
+        "zod": "^3.25.76"
     },
     "devDependencies": {
         "@types/commander": "^2.12.0",
         "@types/glob": "^8.1.0",
         "@types/node": "^24.0.7",
-        
-        "tsx": "^4.20.3"
+        "@types/vscode": "^1.108.1",
+        "tsx": "^4.20.3",
+        "vscode": "^1.1.37"
     }
 }
