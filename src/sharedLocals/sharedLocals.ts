@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { Logger } from "../utils/Logger.js";
 
 export function resolveSharedLocals(config: Config): { importline: string, fields: string[] } {
+    Logger.debug("resolveSharedLocals called", { config });
     const sharedConfig = config.sharedLocals;
 
     if (!sharedConfig) {

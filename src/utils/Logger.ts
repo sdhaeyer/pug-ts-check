@@ -4,7 +4,7 @@ function formatArgs(args: any[]) {
   const foundMulti = args.some(
     (a) => typeof a === "string" && a.includes("\n")
   );
-  return foundMulti ? ["[MULTILINE]\n", ...args] : args;
+  return foundMulti ? ["[MULTILINE-START]\n", ...args, "[MULTILINE-END]\n"] : args;
 }
 
 export type LogLevel = "silent" | "error" | "warn" | "init" | "info" | "debug" | "extraInfo";
@@ -19,11 +19,20 @@ const LOG_PRIORITIES: Record<LogLevel, number> = {
   debug: 6,
 };
 
+
+import type { OutputChannel } from 'vscode';
+
 class LoggerClass {
   level: LogLevel = "info";
+  private outputChannel: OutputChannel | null = null;
 
   setLevel(level: LogLevel) {
     this.level = level;
+  }
+
+  setOutputChannel(channel: OutputChannel) {
+    this.outputChannel = channel;
+    this.logLevel("info", "Logger output channel set");
   }
 
   shouldLog(level: LogLevel) {
@@ -32,36 +41,37 @@ class LoggerClass {
 
   log(level: LogLevel, colorCode: number, label: string, ...args: any[]) {
     if (!this.shouldLog(level)) return;
-    if(level === "error"){
+    const msg = `[${label}] ${formatArgs(args).join(' ')}`;
+    if (this.outputChannel) {
+      this.outputChannel.appendLine("[PUG-TS-CHECK] " + msg);
+    } else if (level === "error") {
       console.error(`\x1b[${colorCode}m[${label}]\x1b[0m`, ...formatArgs(args));
-      return;
-    }else{
+    } else {
       console.log(`\x1b[${colorCode}m[${label}]\x1b[0m`, ...formatArgs(args));
     }
-    
   }
 
   logLevel(level: LogLevel, ...args: any[]) {
-    let colorCode:number = 37; // Default to white
-    let label:string = level.toUpperCase();
-    if(level === "info") {
-        colorCode = 36; // Cyan
-        label = "INFO";
+    let colorCode: number = 37; // Default to white
+    let label: string = level.toUpperCase();
+    if (level === "info") {
+      colorCode = 36; // Cyan
+      label = "INFO";
     } else if (level === "extraInfo") {
-        colorCode = 36; // Cyan
-        label = "EXTRA INFO";
+      colorCode = 36; // Cyan
+      label = "EXTRA INFO";
     } else if (level === "debug") {
-        colorCode = 35; // Magenta
-        label = "DEBUG";
+      colorCode = 35; // Magenta
+      label = "DEBUG";
     } else if (level === "warn") {
-        colorCode = 33; // Yellow
-        label = "WARN";
+      colorCode = 33; // Yellow
+      label = "WARN";
     } else if (level === "error") {
-       colorCode = 31; // Red
-       label = "ERROR";
+      colorCode = 31; // Red
+      label = "ERROR";
     } else if (level === "init") {
-       colorCode = 33; // Yellow
-       label = "INIT";
+      colorCode = 33; // Yellow
+      label = "INIT";
     }
     this.log(level, colorCode, label, ...args);
   }
@@ -74,3 +84,4 @@ class LoggerClass {
 }
 
 export const Logger = new LoggerClass();
+export const setLogLevel = (level: LogLevel) => Logger.setLevel(level);
