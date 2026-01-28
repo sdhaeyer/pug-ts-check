@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-01-28
+
+### Added
+- Go to Definition support for Pug symbols in VS Code extension
+- Config file loading and workspace handling improvements
+- ExtensionLogger class for improved logging
+- Output channel integration for extension logs
+- New commands and link provider for better navigation
+- Navigation to mixin definitions and viewLocals
+- Support for Pug 'extends' and 'include' detection
+- Asset path resolution for CSS, JS, and restricted assets
+- Command for choosing between view and ViewLocals definitions
+
+### Changed
+- Enhanced debug logging for mapping retrieval and file path handling
+- Streamlined output messages for link detection and existence checks
+- Improved code cleanup and consistency in virtualTsStore
+- Refined config loading logic and TypeScript configuration
+- Upgraded dependencies and improved package structure
+
+### Fixed
+- Improved error handling and logging in extension
+- Fixed package.json to remove local dependency issues
+- Updated server port to match configuration
+
 ## [0.1.7] - 2025-08-01
 
 ### Added
