@@ -7,10 +7,11 @@ import { dependencyGraph } from "./dependencyGraph.js";
 import type { PersistedData } from "./PersistedData.js";
 
 import path from "node:path";
-import { config } from "../config/config.js";
+
 import { scanFile } from "../scanner/scanfiles.js";
 import { Logger } from "../utils/Logger.js";
 import { Path } from "../utils/utils.js";
+import { Config, configSchema } from "../config/config.js";
 
 interface ParseResult {
   errors: ParseError[];
@@ -21,7 +22,12 @@ interface ParseResult {
 
 class ParsedResultStore {
   private results = new Map<string, ParseResult>();
+  private config: Config ;
 
+  constructor(config: Config) {
+    this.config = config;
+    
+  }
   set(file: string, errors: ParseError[], contract: ParsedContract | undefined, stale = false) {
     let mtimeMs = 0;
     try {
@@ -108,7 +114,7 @@ class ParsedResultStore {
   logFull() {
     Logger.info("Full parse results log:");
     for (const [file, result] of this.results.entries()) {
-      logParseError(result.errors, file);
+      logParseError(result.errors, file,this.config);
     }
   }
 
@@ -117,7 +123,7 @@ class ParsedResultStore {
   }
 
   save() {
-    const filePath = path.join(config.projectPath, config.cacheParseResultsPath)
+    const filePath = path.join(this.config.projectPath, this.config.cacheParseResultsPath)
     const safeResults = Array.from(this.results.entries()).map(([file, result]) => {
       const safeErrors = result.errors.map((err) => ({
         ...err,
@@ -138,7 +144,7 @@ class ParsedResultStore {
   }
 
   load() {
-    const filePath = path.join(config.projectPath, config.cacheParseResultsPath)
+    const filePath = path.join(this.config.projectPath, this.config.cacheParseResultsPath)
     if (!fs.existsSync(filePath)) {
       Logger.warn(`No persisted data found at ${filePath}`);
       return;
@@ -214,8 +220,8 @@ class ParsedResultStore {
 
 
 
-const parsedResultStore = new ParsedResultStore();
-export { parsedResultStore, ParseResult, ParsedResultStore };
+
+export {  ParseResult, ParsedResultStore };
 
 
 
@@ -226,13 +232,15 @@ export { parsedResultStore, ParseResult, ParsedResultStore };
 
 function test(file: string, result: ParseResult) {
   try {
+    const config: Config= configSchema.parse({});
+    const parsedResultStore = new ParsedResultStore(config);
     const stats = fs.statSync(file);
     const currentMtime = stats.mtimeMs;
     if (currentMtime !== result.mtimeMs) {
       Logger.info(`[STALE] ${file} changed on disk, rescanning...`);
-      const { contract, errors } = scanFile(file);
+      const { contract, errors } = scanFile(file, config, parsedResultStore);
       if (errors.length > 0) {
-        logParseError(errors, file);
+        logParseError(errors,  file, config);
       } else {
         Logger.info("No errors found, updated parse result");
       }

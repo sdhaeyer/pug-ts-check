@@ -6,21 +6,21 @@ import { generateTsFromPugAst } from "../tsgen/pugTsGenerator.js";
 import { validateGeneratedTs } from "../validate/validateGeneratedTs.js";
 import { Logger } from "../utils/Logger.js";
 import { ParseError } from "../errors/ParseError.js";
-import { config } from "../config/config.js";
+import { Config } from "../config/config.js";
 import { glob } from "glob";
 import { FSWatcher } from "chokidar";
 import { ParsedContract } from "../types/types.js";
 import { logParseError } from "../logDiagnostics/logDiagnostics.js";
 import { normalizeImportPath } from "../utils/utils.js";
 import { dependencyGraph } from "../cache/dependencyGraph.js";
-import { parsedResultStore } from "../cache/parsedResult.js";
+import { ParsedResultStore } from "../cache/parsedResult.js";
 
 import { lastScannedFile } from "../cache/lastScannedFile.js";
 import { generateViewLocals } from "../tsgen/generateViewLocals.js";
 
 import { getProjectContext } from "../cache/project-context.js";
 
-export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
+export function scanFile(pugPath: string, config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
   lastScannedFile.path = pugPath;
   Logger.log("info", 33, "RESCAN", pugPath);
 
@@ -40,7 +40,7 @@ export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: Pars
     const pugSource = fs.readFileSync(pugPath, "utf8");
 
     Logger.debug("Getting contract")
-    const { contract: contract, errors: contractErrors } = parseContract(pugPath, pugSource);
+    const { contract: contract, errors: contractErrors } = parseContract(pugPath, config, pugSource);
     if (!contract || contractErrors.length > 0) {
       errors.push(...contractErrors);
       Logger.debug(`❌ Errors found in ${pugPath}:`);
@@ -51,7 +51,7 @@ export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: Pars
     // console.log(contract)
 
     Logger.debug("Getting AST")
-    const { ast: ast, errors: precompileErrors } = precompilePug(pugPath, pugSource);
+    const { ast: ast, errors: precompileErrors } = precompilePug(pugPath, config, pugSource);
     errors.push(...precompileErrors);
 
     if (!ast) {
@@ -62,12 +62,12 @@ export function scanFile(pugPath: string, watcher?: FSWatcher): { contract: Pars
 
     Logger.debug("Generating TypeScript");
     const ctx = getProjectContext(); // Ensure project context is initialized
-    const tsResult = generateTsFromPugAst(ast, contract, ctx.sharedLocalsMeta);
+    const tsResult = generateTsFromPugAst(ast, contract, ctx.sharedLocalsMeta, config);
 
     Logger.debug(`✅ Generated TypeScript for ${pugPath}:`);
 
     Logger.debug("Validating TypeScript");
-    let typescriptValidateErrors = validateGeneratedTs(tsResult.tsSource, tsResult.lineMap, pugPath);
+    let typescriptValidateErrors = validateGeneratedTs(tsResult.tsSource, tsResult.lineMap, pugPath, config);
 
     errors.push(...typescriptValidateErrors);
 
@@ -105,7 +105,7 @@ const seen = new Set<string>();
 
 
 
-export function scanNewAndChanged(watcher?: FSWatcher):void  {
+export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher):void  {
   
   const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
   parsedResultStore.markStaleFiles()
@@ -114,7 +114,7 @@ export function scanNewAndChanged(watcher?: FSWatcher):void  {
     let pugFiles: string[] = [];
     if (!fs.existsSync(pugRoot)) {
 
-      throw new Error(`❌ Looking at pugPaths...\n [${pugPaths}] \n  Pugroot does not exist:\n  ${pugRoot}\n  Please check your configuration...  \n  ${config.pugTsConfigPath} \n Pugpaths must be relative to the projectpath given.`);
+      throw new Error(`❌ Looking at pugPaths...\n [${pugPaths}] \n  Pugroot does not exist:\n  ${pugRoot}\n  Please check your configuration...  \n  Pugpaths must be relative to the projectpath given.`);
     }
 
     if (!fs.statSync(pugRoot).isDirectory()) {
@@ -142,13 +142,13 @@ export function scanNewAndChanged(watcher?: FSWatcher):void  {
       }
       if (needsRescan) {
         
-        const { contract, errors } = scanFile(pugFile, watcher);
+        const { contract, errors } = scanFile(pugFile, config, parsedResultStore, watcher);
         
       }
     }
     Logger.debug(` Type-check completed for all changed Pug files in ${pugRoot}`);
     if(!parsedResultStore.hasErrors()) {
-      generateViewLocals();
+      generateViewLocals(config, parsedResultStore);
     }
 
   }

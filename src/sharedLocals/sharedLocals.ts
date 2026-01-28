@@ -16,9 +16,9 @@ export function resolveSharedLocals(config: Config): { importline: string, field
 
     if (!fs.existsSync(sharedFilePath)) {
         let message = `❌ SharedLocals file not found at: ${sharedFilePath}.  \n projectpath: ${config.projectPath} \nimportpath: ${sharedConfig.importPath}`;
-        if (config.pugTsConfigPath){
-            message += `\nPlease check your configuration at: ${config.pugTsConfigPath}`;
-        }
+        
+            message += `\nPlease check your configuration`;
+        
         Logger.warn(message);
         return { importline: "", fields: [] };
     }

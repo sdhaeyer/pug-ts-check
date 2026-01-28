@@ -4,7 +4,7 @@ import { Logger } from "../utils/Logger.js";
 import { LineMap, type MappedLine, type ParsedContract } from "../types/types.js";
 import { extractNames } from "../utils/utils.js";
 
-import { config } from "../config/config.js";
+import { Config } from "../config/config.js";
 
 export interface SharedLocalsMeta {
     fields: string[];
@@ -17,7 +17,7 @@ export interface SharedLocalsMeta {
  */
 
 
-export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract, sharedLocalsMeta: SharedLocalsMeta): { tsSource: string; lineMap: MappedLine[] } {
+export function generateTsFromPugAst(ast: PugAstNode, contract: ParsedContract, sharedLocalsMeta: SharedLocalsMeta, config: Config): { tsSource: string; lineMap: MappedLine[] } {
 
 
     const lineMap = new LineMap();

@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { config, configSchema } from "./config.js";
+import { Config,  configSchema } from "./config.js";
 import { Logger } from "../utils/Logger.js";
 import { get } from "node:http";
 import { Path } from "../utils/utils.js";
@@ -16,13 +16,14 @@ export interface PugTsConfig {
 
 
 
-export async function loadPugTsConfigPath(configPath: string): Promise<void> {
+export async function loadPugTsConfigPath(configPath: string): Promise<Config | undefined> {
   
+  const config = configSchema.parse({});
 
   // loading ... 
   if (!fs.existsSync(configPath)) {
     Logger.warn(`⚠️ No pug.tsconfig.json found at ${configPath}, using built-in defaults.`);
-    return
+    return undefined;
   }
 
   const raw = fs.readFileSync(configPath, "utf8");
@@ -59,6 +60,8 @@ export async function loadPugTsConfigPath(configPath: string): Promise<void> {
       throw new Error(`Pug path ${pugPath} is not under viewsRoot ${config.viewsRoot}\n Please adjust the config file:\n ${configPath}\n to ensure that all pug paths are under the viewsRoot: ${viewsRoot}`);
     }
   });
+
+  return config;
 }
 
 

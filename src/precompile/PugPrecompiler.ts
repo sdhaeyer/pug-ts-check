@@ -8,13 +8,12 @@ import lex from "pug-lexer";
 import parse from "pug-parser";
 import { Logger } from "../utils/Logger.js";
 import { ParseError } from "../errors/ParseError.js";
-import { config } from "../config/config.js";
-import { error } from "node:console";
 import { dependencyGraph } from "../cache/dependencyGraph.js";
+import { Config } from "../config/config.js";
 
 
 
-export function precompilePug(filePath: string, fileSource?: string, caller?: string): { ast: PugAstNode | undefined, errors: ParseError[] } {
+export function precompilePug(filePath: string, config: Config, fileSource?: string, caller?: string): { ast: PugAstNode | undefined, errors: ParseError[] } {
     const errors: ParseError[] = [];
     let ast: PugAst | undefined = undefined;
     const absolutePath = path.resolve(filePath);
@@ -90,7 +89,7 @@ export function precompilePug(filePath: string, fileSource?: string, caller?: st
                 }
                 if (extendBlock) {
                     Logger.debug(`Found extends block in ${node.filename} at line ${node.line}`);
-                    const masterPath = resolvePugIncludePath(node.filename, extendBlock.file.path);
+                    const masterPath = resolvePugIncludePath(node.filename, extendBlock.file.path, config);
                     dependencyGraph.add(node.filename, masterPath); // add the dependency edge
 
                     const childPath = node.filename;
@@ -118,7 +117,7 @@ export function precompilePug(filePath: string, fileSource?: string, caller?: st
                     if (!fs.existsSync(masterPath)) {
                         throw new ParseError(`Precompile: Pug file not found at path: ${masterPath}`, node.filename, node.line ?? -1);
                     }
-                    const { ast: masterAst, errors: masterErrors } = precompilePug(masterPath);
+                    const { ast: masterAst, errors: masterErrors } = precompilePug(masterPath, config);
                     if (masterErrors.length > 0) {
                         errors.push(...masterErrors);
                     }
@@ -184,11 +183,11 @@ export function precompilePug(filePath: string, fileSource?: string, caller?: st
             if (node.type === "Include") {
                 Logger.debug(`Found include in ${node.filename}:${node.line}`);
                 // resolve include path
-                const includePath = resolvePugIncludePath(node.filename, node.file.path);
+                const includePath = resolvePugIncludePath(node.filename, node.file.path, config);
                 // now add the includes ... 
 
                 Logger.debug(`START - Precompiling include: ${includePath}`);
-                const { ast: includeAst, errors: includeErrors } = precompilePug(includePath);
+                const { ast: includeAst, errors: includeErrors } = precompilePug(includePath, config);
                 Logger.debug(`END - Precompiling include: ${includePath}`);
                 errors.push(...includeErrors);
                 dependencyGraph.add(node.filename, includePath); // add the dependency edge
@@ -375,7 +374,7 @@ export function stringifyPugAst(ast: PugAstNode, indent: string = ""): string {
  * - absolute pug paths (starting with '/'), relative to viewsRoot
  * - relative paths, relative to currentFile
  */
-export function resolvePugIncludePath(currentFile: string, pugPath: string): string {
+export function resolvePugIncludePath(currentFile: string, pugPath: string, config:Config): string {
 
     // maybe to ad multiple viewroots ... 
     let viewsRoot = path.join(config.projectPath, config.viewsRoot);

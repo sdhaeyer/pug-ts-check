@@ -4,13 +4,14 @@ import {  SyntaxKind, Diagnostic   } from "ts-morph";
 import { Logger } from "../utils/Logger.js";
 import type { MappedLine } from "../types/types.js"; // fix if needed
 
-import {config} from "../config/config.js";
+
 import * as ts from "typescript";
 import { ParseError } from "../errors/ParseError.js";
 
 import { getProjectContext } from "../cache/project-context.js";
+import { Config } from "../config/config.js";
 
-export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], oriFilePath: string ):ParseError[]   {
+export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], oriFilePath: string, config:Config ):ParseError[]   {
     Logger.debug("Starting type-check of generated TypeScript...");
     
     //Logger.debug("Linemap : ");

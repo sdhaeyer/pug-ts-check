@@ -2,7 +2,6 @@
 import { z } from "zod";
 
 export const configSchema = z.object({
-  pugTsConfigPath: z.string().default("./pug-ts.config.ts"),
   tmpDir: z.string().default(".tmp"),
   projectPath: z.string().default("./"),
   pugPaths: z.array(z.string()).default(["./src/views"]),
@@ -18,4 +17,4 @@ export const configSchema = z.object({
 
 export type Config = z.infer<typeof configSchema>;
 
-export const config: Config = configSchema.parse({});
+

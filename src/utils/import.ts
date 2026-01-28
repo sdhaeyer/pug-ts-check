@@ -1,6 +1,6 @@
 
 import { ParseError } from "../errors/ParseError.js";
-import { config } from "../config/config.js";
+import { Config } from "../config/config.js";
 import { Path, splitTopLevel } from "./utils.js";
 
 export class Import {
@@ -58,7 +58,7 @@ export class Import {
   /**
    * Returns an import statement relative to the tmp directory
    */
-  getRebasedImportStatementTemp(): string {
+  getRebasedImportStatementTemp(config:Config): string {
 
     const tmpDir = Path.resolve(config.projectPath, config.tmpDir);
     return this.getRebasedImportStatement(tmpDir);

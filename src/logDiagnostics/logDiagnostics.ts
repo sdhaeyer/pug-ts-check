@@ -3,7 +3,7 @@ import { Logger, LogLevel } from "../utils/Logger.js";
 
 import { ParseError } from "../errors/ParseError.js";
 import path from "node:path";
-import { config } from "../config/config.js";
+import { Config } from "../config/config.js";
 import fs from "node:fs";
 
 export const errorCodeDescriptions: Record<number, string> = {
@@ -20,7 +20,7 @@ export const errorCodeDescriptions: Record<number, string> = {
 };
 
 
-export function logParseError(errors: ParseError[], pugFile: string, extraInfoEnabled = false) {
+export function logParseError(errors: ParseError[], pugFile: string, config: Config, extraInfoEnabled = false) {
     if (errors.length > 0) {
         Logger.error(`❌ ${pugFile} --failed type-check!`);
         Logger.error(`\x1b[31m${errors.length} errors found.\x1b[0m`);
@@ -93,8 +93,8 @@ export function logParseError(errors: ParseError[], pugFile: string, extraInfoEn
                         declarations.forEach(decl => {
                             Logger.error(`At: ${decl.getSourceFile().getFilePath()}:${decl.getStartLineNumber()}`);
                         });
-                        if(extraInfoEnabled) {
-                            
+                        if (extraInfoEnabled) {
+
                             // print its members
                             const properties = expressionType.getProperties();
                             Logger.error(`Members:`);
@@ -114,7 +114,7 @@ export function logParseError(errors: ParseError[], pugFile: string, extraInfoEn
         }
 
     }
-    if(errors.length > 0) {
+    if (errors.length > 0) {
         Logger.error("END ERRORS");
         Logger.error("***************************************************************************");
     }
@@ -125,7 +125,7 @@ export function logSnippet(line: number, snippetRadius: number, sourceLines: str
     const snippetStart = Math.max(0, line - 1 - snippetRadius);
     const snippetEnd = Math.min(sourceLines.length, line + snippetRadius);
 
-    Logger.logLevel(logLevel,`Code snippet around line ${line}:`);
+    Logger.logLevel(logLevel, `Code snippet around line ${line}:`);
     for (let i = snippetStart; i < snippetEnd; i++) {
         const lineMarker = (i + 1 === line) ? "👉" : "  ";
         Logger.logLevel(logLevel, `${lineMarker} ${i + 1}: ${sourceLines[i]}`);

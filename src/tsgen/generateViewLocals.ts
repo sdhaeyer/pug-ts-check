@@ -1,12 +1,13 @@
 import fs from "fs";
 
 import { parseExpects, Path } from "../utils/utils.js";
-import { parsedResultStore } from "../cache/parsedResult.js";
-import { config } from "../config/config.js";
+
+import { Config } from "../config/config.js";
 import { Logger } from "../utils/Logger.js";
+import { ParsedResultStore } from "../cache/parsedResult.js";
 
 
-export function generateViewLocals() {
+export function generateViewLocals(config:Config, parsedResultStore: ParsedResultStore) {
 
     const outDir = Path.resolve(config.projectPath, config.typesPath);
     const outputPath = Path.resolve(outDir, "viewlocals.d.ts");
@@ -21,7 +22,7 @@ export function generateViewLocals() {
         const contract = parsed.contract;
         if (!contract) continue;
 
-        const viewName = normalizeViewName(contract.pugPath);
+        const viewName = normalizeViewName(contract.pugPath, config);
         const interfaceName = viewNameToInterfaceName(viewName);
 
         // Collect import statements
@@ -98,7 +99,7 @@ export function generateViewLocals() {
     }
 }
 
-function normalizeViewName(pugPath: string): string {
+function normalizeViewName(pugPath: string, config: Config): string {
     const viewsRootAbs = Path.resolve(config.projectPath, config.viewsRoot);
     const relative = Path.relative(viewsRootAbs, pugPath);
     return relative.replace(/\.pug$/, "");

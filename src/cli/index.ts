@@ -8,16 +8,16 @@ import { Logger } from "../utils/Logger.js";
 import { scanNewAndChanged, scanFile } from "../scanner/scanfiles.js";
 
 
-import { Config, config } from "../config/config.js";
+import { Config, configSchema } from "../config/config.js";
 import { loadPugTsConfigPath } from "../config/loadPugConfig.js";
 import { dependencyGraph } from "../cache/dependencyGraph.js";
 import { logParseError, logSnippet } from "../logDiagnostics/logDiagnostics.js";
-import { parsedResultStore } from "../cache/parsedResult.js";
+
 import { lastScannedFile } from "../cache/lastScannedFile.js";
-import { error } from "node:console";
 import { generateViewLocals } from "../tsgen/generateViewLocals.js";
-import { getProjectContext, initProjectContext } from "../cache/project-context.js";
+import {  initProjectContext } from "../cache/project-context.js";
 import { Path } from "../utils/utils.js";
+import { ParsedResultStore } from "../cache/parsedResult.js";
 
 // Get package.json version
 const __filename = fileURLToPath(import.meta.url);
@@ -53,12 +53,14 @@ program
     Logger.debug("Showing debug lines ");
     const pugTsConfigPath = options.config || "pug.tsconfig.json";
 
+    
+    
     if (options.config) {
       Logger.init(`Using custom Pug TypeScript config at: ${pugTsConfigPath}`);
-      config.pugTsConfigPath = pugTsConfigPath;
+      
     }
 
-    await loadPugTsConfigPath(pugTsConfigPath)
+    const config =  await loadPugTsConfigPath(pugTsConfigPath) || configSchema.parse({});
     Logger.debug(config)
 
 
@@ -74,11 +76,12 @@ program
       config.pugPaths = options.pugPaths.map((p: string) => path.resolve(p));
     }
 
-    quickValidateConfig(config)
+    quickValidateConfig(config, pugTsConfigPath);
     
     // Make the project after using the config 
     const ctx = initProjectContext(config);
     Logger.init("Loading Pug ParsedResults from disk...");
+    const parsedResultStore = new ParsedResultStore(config);
     parsedResultStore.load();
 
     var singleFile = false
@@ -123,7 +126,7 @@ program
         Logger.init("Starting scan changed files...");
 
         // Initial scanproject.finishedData.ThreadLength
-        scanNewAndChanged(watcher);
+        scanNewAndChanged(config, parsedResultStore, watcher);
         
         parsedResultStore.logSummary();
 
@@ -153,8 +156,8 @@ program
               });
             }
           } else {
-            const { errors, contract } = scanFile(file, watcher);
-            logParseError(errors, file);
+            const { errors, contract } = scanFile(file, config, parsedResultStore, watcher);
+            logParseError(errors, file, config );
             parsedResultStore.setStale(file, true);
             parsedResultStore.markStaleDependents();
             parsedResultStore.setStale(file, false);
@@ -162,10 +165,10 @@ program
           }
           if (parsedResultStore.hasStale()) {
             Logger.info(`🔍 Scanning dependency graph`);
-            scanNewAndChanged(watcher);
+            scanNewAndChanged(config, parsedResultStore, watcher);
           } else {
             Logger.info(`Skipping dependency graph`);
-            if (!parsedResultStore.hasErrors()) generateViewLocals();
+            if (!parsedResultStore.hasErrors()) generateViewLocals(config, parsedResultStore);
           }
           if (!parsedResultStore.hasErrors()) {
             Logger.info(`✅ All changes processed successfully.`);
@@ -192,7 +195,7 @@ program
       process.stdin.on("data", (key: string) => {
         if (key === "r") {
           Logger.info("manual rescan!");
-          scanNewAndChanged(watcher);
+          scanNewAndChanged(config, parsedResultStore, watcher);
           parsedResultStore.logSummary();
         }
         if (key === "s") {
@@ -209,7 +212,7 @@ program
         if (key === "g") {
           Logger.info("generating ts from last file");
           if (lastScannedFile.path) {
-            const { contract, errors, rawGeneratedTs } = scanFile(lastScannedFile.path, watcher);
+            const { contract, errors, rawGeneratedTs } = scanFile(lastScannedFile.path,config, parsedResultStore, watcher);
             logSnippet(0, 500, rawGeneratedTs?.split(/\r?\n/) || []);
           } else {
             Logger.error("No last scanned file found.");
@@ -235,7 +238,7 @@ program
       });
 
     } else {
-      scanNewAndChanged(undefined);
+      scanNewAndChanged(config, parsedResultStore, undefined);
       parsedResultStore.logErrors();
       parsedResultStore.save();
 
@@ -248,8 +251,8 @@ await program.parseAsync()
 
 
 
-function quickValidateConfig(config: Config) {
-  const configPath = config.pugTsConfigPath;
+function quickValidateConfig(config: Config, configPath:string) {
+  
   const message = `❌ Invalid configuration at ${configPath}:\n`; 
   if (!config.projectPath) {
     throw new Error(message + "Project path is not set in the configuration.");

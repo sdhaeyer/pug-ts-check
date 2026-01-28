@@ -6,7 +6,7 @@ import fs from "node:fs";
 import { ParseError } from "../errors/ParseError.js";
 import { ParsedContract } from "../types/types.js"; // fix if needed
 import { normalizeImportPath, toAbsolute } from "../utils/utils.js";
-import { config } from "../config/config.js";
+import { Config } from "../config/config.js";
 
 
 import { dependencyGraph } from "../cache/dependencyGraph.js";
@@ -18,7 +18,7 @@ import { getProjectContext } from "../cache/project-context.js";
 /**
  * Parse //@import and //@expect from pug source
  */
-export function parseContract(pugPath: string, pugSource?: string): { contract: ParsedContract | undefined, errors: ParseError[] } {
+export function parseContract(pugPath: string, config: Config, pugSource?: string): { contract: ParsedContract | undefined, errors: ParseError[] } {
     Logger.debug("Parsing contract annotations in Pug...");
 
 
