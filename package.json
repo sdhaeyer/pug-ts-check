@@ -1,6 +1,6 @@
 {
     "name": "pug-ts-check",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Static TypeScript checker for Pug templates",
     "type": "module",
     "license": "MIT",
@@ -26,7 +26,7 @@
         "express"
     ],
     "bin": {
-        "pug-ts-check": "./dist/cli/index.js"
+        "pug-ts-check": "dist/cli/index.js"
     },
     "main": "./dist/cli/index.js",
     "exports": {

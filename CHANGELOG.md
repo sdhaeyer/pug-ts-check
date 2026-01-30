@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-01-30
+
+### Added
+- Enhanced tsconfig.json with source map and inline sources options for better debugging
+
+### Changed
+- Refactored command logging for improved clarity and consistency
+- Ensured view locals are generated immediately after type checking
+
+### Fixed
+- Improved command execution order and type checking pipeline
+
 ## [0.2.0] - 2026-01-28
 
 ### Added
