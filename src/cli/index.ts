@@ -131,13 +131,13 @@ program
         parsedResultStore.logSummary();
 
         Logger.init("✅ Initial scan complete. Watching for changes...");
-        console.log("\n📋 Interactive Commands: r=rescan | s=summary | e=errors | f=full log | g=generate TS | l=Show Locals | Ctrl+C=exit\n");
+        logCommands();
       });
 
       watcher.on("all", (event, file) => {
         file = path.resolve(file);
         console.log("\n".repeat(20));
-        
+        logCommands();
         console.log("*EVENT DETECTED**************************************************");
         Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
 
@@ -181,11 +181,12 @@ program
 
           // scanNewAndChanged(watcher);
         }
-
+        logCommands();
 
       });
       watcher.on("error", (err) => {
         Logger.error(`chokidar error: ${err}`);
+        logCommands();
       });
       // Add this after watcher.on("error", ...) — still inside options.watch block:
       process.stdin.setRawMode(true);
@@ -230,7 +231,7 @@ program
 
           process.exit();
         }
-
+        logCommands();
       });
       process.on("SIGINT", () => {
         // Handle Ctrl+C
@@ -250,7 +251,9 @@ program
 await program.parseAsync()
 
 
-
+function logCommands() {
+  console.log("\n📋 Interactive Commands: r=rescan | s=summary | e=errors | f=full log | g=generate TS | l=Show Locals | Ctrl+C=exit\n");
+}
 function quickValidateConfig(config: Config, configPath:string) {
   
   const message = `❌ Invalid configuration at ${configPath}:\n`; 

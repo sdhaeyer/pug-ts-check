@@ -147,9 +147,10 @@ export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResul
       }
     }
     Logger.debug(` Type-check completed for all changed Pug files in ${pugRoot}`);
-    if(!parsedResultStore.hasErrors()) {
-      generateViewLocals(config, parsedResultStore);
-    }
+    
+    Logger.info("Generating view locals types...");
+    generateViewLocals(config, parsedResultStore);
+    
 
   }
   
