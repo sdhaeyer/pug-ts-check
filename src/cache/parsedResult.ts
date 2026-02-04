@@ -89,11 +89,12 @@ class ParsedResultStore {
   }
   logSummaryAll() {
     for (const [file, result] of this.results.entries()) {
+      const relativePath = path.relative(this.config.projectPath, file);
       if( result.errors.length === 0) {
-        Logger.info(`[${file}] -> No errors found`);
+        Logger.info(`[${relativePath}] -> No errors found`);
         continue;
       }else{
-        Logger.error(`[${file}] -> ${result.errors.length} error(s)`);
+        Logger.error(`[${relativePath}] -> ${result.errors.length} error(s)`);
       }
     }
   }
@@ -102,7 +103,8 @@ class ParsedResultStore {
     for (const [file, result] of this.results.entries()) {
       if (result.errors.length > 0) {
         foundError = true;
-        Logger.error(`[${file}] -> ${result.errors.length} error(s)`);
+        const relativePath = path.relative(this.config.projectPath, file);
+        Logger.error(`[${relativePath}] -> ${result.errors.length} error(s)`);
       }
 
     }

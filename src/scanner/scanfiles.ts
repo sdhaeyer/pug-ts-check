@@ -22,7 +22,8 @@ import { getProjectContext } from "../cache/project-context.js";
 
 export function scanFile(pugPath: string, config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
   lastScannedFile.path = pugPath;
-  Logger.log("info", 33, "RESCAN", pugPath);
+  const relativePath = path.relative(config.projectPath, pugPath);
+  Logger.log("info", 33, "RESCAN", relativePath);
 
   dependencyGraph.clear(pugPath);
   parsedResultStore.clear(pugPath);

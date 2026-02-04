@@ -48,9 +48,9 @@ export function parseContract(pugPath: string, config: Config, pugSource?: strin
 
             if (ruleText.startsWith("import")) {
                 if (!ruleText.startsWith("import type")) {
-
+                    const relativePath = path.relative(config.projectPath, pugPath);
                     Logger.warn(`⚠️  Consider using 'import type' to avoid runtime imports in contracts: ${ruleText}`);
-                    Logger.warn(` Found in ${pugPath}:${currentLine} on line ${currentLine}`);
+                    Logger.warn(` Found in ${relativePath}:${currentLine} on line ${currentLine}`);
                 }
 
                 let importObject

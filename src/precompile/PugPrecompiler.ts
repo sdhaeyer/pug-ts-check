@@ -389,16 +389,18 @@ export function resolvePugIncludePath(currentFile: string, pugPath: string, conf
     }
 
     // Log debug info to the VS Code OutputChannel via Logger and to a file
+    const relativeCurrentFile = path.relative(config.projectPath, currentFile);
+    const relativeResolvedPath = path.relative(config.projectPath, resolvedPath);
     const logMsg = [
         '[PUG-RESOLVE]',
         'config.viewsRoot: ' + config.viewsRoot,
         'viewsRoot: ' + viewsRoot,
-        'currentFile: ' + currentFile,
+        'currentFile: ' + relativeCurrentFile,
         'pugPath: ' + pugPath,
-        'resolvedPath: ' + resolvedPath,
+        'resolvedPath: ' + relativeResolvedPath,
         '---'
     ].join('\n');
-    Logger.info(logMsg);
+    Logger.debug(logMsg);  // Changed from Logger.info to Logger.debug
     try {
         const debugLogPath = 'C:/Users/sam/Desktop/program-projects/node_projects/pug-ts-check/pug-path-debug.log';
         fs.appendFileSync(debugLogPath, logMsg + '\n');

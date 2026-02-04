@@ -21,19 +21,19 @@ export const errorCodeDescriptions: Record<number, string> = {
 
 
 export function logParseError(errors: ParseError[], pugFile: string, config: Config, extraInfoEnabled = false) {
+    const relativePath = path.relative(config.projectPath, pugFile);
     if (errors.length > 0) {
-        Logger.error(`❌ ${pugFile} --failed type-check!`);
-        Logger.error(`\x1b[31m${errors.length} errors found.\x1b[0m`);
+        Logger.error(`❌ [${relativePath}] -> ${errors.length} error(s)`);
     } else {
-        Logger.info(`✅  ${".\\" + path.relative(config.projectPath, pugFile)} passed type-check!`);
+        Logger.info(`✅ [${relativePath}] passed type-check!`);
     }
     for (const error of errors) {
         var diagnostic = error.diagnostic;
 
         Logger.error("***************************************************************************")
         Logger.error("ERROR: " + error.type);
-        Logger.error("ORIFILE: " + pugFile);
-        Logger.error(`MAP: \x1b[32m${error.pugPath}:${error.pugLine}\x1b[0m`)
+        Logger.error("FILE: " + relativePath);
+        Logger.error(`MAP: \x1b[32m${path.relative(config.projectPath, error.pugPath)}:${error.pugLine}\x1b[0m`)
         Logger.error(`Message: \x1b[33m${error.message}\x1b[0m`)
 
 

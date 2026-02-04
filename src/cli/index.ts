@@ -105,7 +105,8 @@ program
       const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
       Logger.init("Watching directories:");
       pugPaths.forEach((p) => {
-        Logger.init(`- ${p}`);
+        const relativePath = path.relative(config.projectPath, p);
+        Logger.init(`- ${relativePath}`);
       });
       const watcher = chokidar.watch(pugPaths, {
         ignored: (filePath, stats) => {
@@ -136,10 +137,11 @@ program
 
       watcher.on("all", (event, file) => {
         file = path.resolve(file);
+        const relativePath = path.relative(config.projectPath, file);
         console.log("\n".repeat(20));
         logCommands();
         console.log("*EVENT DETECTED**************************************************");
-        Logger.info(`-> Detected ${event} in ${file}, re-checking...`);
+        Logger.info(`-> Detected ${event} in ${relativePath}, re-checking...`);
 
         if (event === "add" || event === "change") {
           
@@ -148,7 +150,7 @@ program
             const refreshed = ctx.tsProject.getSourceFile(file);
             if (refreshed) {
               refreshed.refreshFromFileSystemSync();
-              Logger.info(`Refreshed ${file} in ts-morph project`);
+              Logger.info(`Refreshed ${relativePath} in ts-morph project`);
               dependencyGraph.getDependentsOf(file).forEach((pugPath) => {
                 parsedResultStore.setStale(pugPath, true);
                 parsedResultStore.markStaleDependents();
