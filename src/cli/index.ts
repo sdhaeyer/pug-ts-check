@@ -34,6 +34,9 @@ program
   .argument("[path]", "path to a .pug file or a directory")
   .option("--verbose", "enable verbose output")
   .option("--silent", "disable most logs")
+  .option("--check-only", "type-check without writing viewlocals.d.ts")
+  .option("--report", "show cached errors without rescanning Pug files, handy when running watch mode but still needing the error list.")
+  .option("--rescan-all", "ignore the cache and rescan every Pug file")
   .option("--watch", "watch a directory for changes and re-run")
   .option("--projectPath <path>", "TypeScript project path")
   .option("--tmpDir <dir>", "temporary dir")
@@ -77,12 +80,25 @@ program
     }
 
     quickValidateConfig(config, pugTsConfigPath);
+
+    if (options.report) {
+      const parsedResultStore = new ParsedResultStore(config);
+      parsedResultStore.load();
+      parsedResultStore.logErrors(true);
+      if (parsedResultStore.hasErrors()) {
+        process.exitCode = 1;
+      }
+      return;
+    }
     
     // Make the project after using the config 
     const ctx = initProjectContext(config);
     Logger.init("Loading Pug ParsedResults from disk...");
     const parsedResultStore = new ParsedResultStore(config);
     parsedResultStore.load();
+    if (options.rescanAll) {
+      parsedResultStore.markAllStale();
+    }
 
     var singleFile = false
     if (targetPath) {
@@ -130,6 +146,7 @@ program
         scanNewAndChanged(config, parsedResultStore, watcher);
         
         parsedResultStore.logSummary();
+        parsedResultStore.save();
 
         Logger.init("✅ Initial scan complete. Watching for changes...");
         logCommands();
@@ -176,9 +193,11 @@ program
             Logger.info(`✅ All changes processed successfully.`);
           } else {
             Logger.error("❌ Still errors in the project");
+            Logger.error("Aantal fouten: " + parsedResultStore.countErrors() + " in " + parsedResultStore.countErrorFiles() + " files");
             //parsedResultStore.logFull();
 
           }
+          parsedResultStore.save();
 
 
           // scanNewAndChanged(watcher);
@@ -197,9 +216,17 @@ program
 
       process.stdin.on("data", (key: string) => {
         if (key === "r") {
-          Logger.info("manual rescan!");
+          Logger.info("manual rescan of changed files!");
           scanNewAndChanged(config, parsedResultStore, watcher);
           parsedResultStore.logSummary();
+          parsedResultStore.save();
+        }
+        if (key === "a") {
+          Logger.info("manual full rescan!");
+          parsedResultStore.markAllStale();
+          scanNewAndChanged(config, parsedResultStore, watcher);
+          parsedResultStore.logSummary();
+          parsedResultStore.save();
         }
         if (key === "s") {
           Logger.info("summary!");
@@ -241,9 +268,12 @@ program
       });
 
     } else {
-      scanNewAndChanged(config, parsedResultStore, undefined);
-      parsedResultStore.logErrors();
+      scanNewAndChanged(config, parsedResultStore, undefined, !options.checkOnly);
+      parsedResultStore.logErrors(true);
       parsedResultStore.save();
+      if (parsedResultStore.hasErrors()) {
+        process.exitCode = 1;
+      }
 
     }
 
@@ -254,7 +284,7 @@ await program.parseAsync()
 
 
 function logCommands() {
-  console.log("\n📋 Interactive Commands: r=rescan | s=summary | e=errors | f=full log | g=generate TS | l=Show Locals | Ctrl+C=exit\n");
+  console.log("\n📋 Interactive Commands: r=rescan changed | a=rescan all | s=summary | e=errors | f=full log | g=generate TS | l=Show Locals | Ctrl+C=exit\n");
 }
 function quickValidateConfig(config: Config, configPath:string) {
   

@@ -98,13 +98,20 @@ class ParsedResultStore {
       }
     }
   }
-  logErrors() {
+  logErrors(detailed = false) {
     let foundError = false;
     for (const [file, result] of this.results.entries()) {
       if (result.errors.length > 0) {
         foundError = true;
         const relativePath = path.relative(this.config.projectPath, file);
         Logger.error(`[${relativePath}] -> ${result.errors.length} error(s)`);
+        if (detailed) {
+          for (const error of result.errors) {
+            const code = error.errorTypeCode ? ` TS${error.errorTypeCode}` : "";
+            const message = error.message || "message unavailable in cached result; run a fresh check";
+            Logger.error(`  - line ${error.pugLine}${code}: ${message}`);
+          }
+        }
       }
 
     }
@@ -194,6 +201,12 @@ class ParsedResultStore {
     this.markStaleDependents();
   }
 
+  markAllStale() {
+    for (const result of this.results.values()) {
+      result.stale = true;
+    }
+  }
+
   markStaleDependents() {
     for (const [file, result] of this.getAll()) {
       if (result && result.stale && result.contract && result.contract.pugPath) {
@@ -217,6 +230,22 @@ class ParsedResultStore {
       }
     }
     return false;
+  }
+  countErrors(): number {
+    let totalErrors = 0;
+    for (const result of this.results.values()) {
+      totalErrors += result.errors.length;
+    }
+    return totalErrors;
+  }
+  countErrorFiles(): number {
+    let totalerrorFiles = 0;
+    for (const result of this.results.values()) {
+      if (result.errors.length > 0) {
+        totalerrorFiles++;
+      }
+    }
+    return totalerrorFiles;
   }
 }
 

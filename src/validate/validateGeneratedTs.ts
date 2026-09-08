@@ -10,9 +10,11 @@ import { ParseError } from "../errors/ParseError.js";
 
 import { getProjectContext } from "../cache/project-context.js";
 import { Config } from "../config/config.js";
+import { performance } from "node:perf_hooks";
 
 export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], oriFilePath: string, config:Config ):ParseError[]   {
     Logger.debug("Starting type-check of generated TypeScript...");
+    const startedAt = performance.now();
     
     //Logger.debug("Linemap : ");
     for (const [index, mapEntry] of lineMap.entries()) {
@@ -40,7 +42,9 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], or
 
     //Logger.debug(`Loaded virtual file for type-checking: ${tmpPath}`);
 
+    const diagnosticsStartedAt = performance.now();
     const diagnostics = sourceFile.getPreEmitDiagnostics();
+    const diagnosticsDuration = performance.now() - diagnosticsStartedAt;
 
     const errors: ParseError[] = [];
     for (const diag of diagnostics) {
@@ -56,6 +60,7 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], or
     }
 
 
+    Logger.info(`[TIMING] ${path.relative(config.projectPath, oriFilePath)}: diagnostics ${diagnosticsDuration.toFixed(0)}ms, total type-check ${(performance.now() - startedAt).toFixed(0)}ms`);
     return errors;
 }
 

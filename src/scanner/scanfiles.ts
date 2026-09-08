@@ -106,7 +106,7 @@ const seen = new Set<string>();
 
 
 
-export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher):void  {
+export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher, generateTypes = true):void  {
   
   const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
   parsedResultStore.markStaleFiles()
@@ -149,8 +149,10 @@ export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResul
     }
     Logger.debug(` Type-check completed for all changed Pug files in ${pugRoot}`);
     
-    Logger.info("Generating view locals types...");
-    generateViewLocals(config, parsedResultStore);
+    if (generateTypes) {
+      Logger.info("Generating view locals types...");
+      generateViewLocals(config, parsedResultStore);
+    }
     
 
   }
