@@ -3,13 +3,13 @@ import fs from "node:fs";
 import { parseContract } from "../contracts/ContractParser.js";
 import { precompilePug } from "../precompile/PugPrecompiler.js";
 import { generateTsFromPugAst } from "../tsgen/pugTsGenerator.js";
-import { validateGeneratedTs } from "../validate/validateGeneratedTs.js";
+import { validateGeneratedTs, validateGeneratedTsBatch, GeneratedTsInput } from "../validate/validateGeneratedTs.js";
 import { Logger } from "../utils/Logger.js";
 import { ParseError } from "../errors/ParseError.js";
 import { Config } from "../config/config.js";
 import { glob } from "glob";
 import { FSWatcher } from "chokidar";
-import { ParsedContract } from "../types/types.js";
+import { MappedLine, ParsedContract } from "../types/types.js";
 import { logParseError } from "../logDiagnostics/logDiagnostics.js";
 import { normalizeImportPath } from "../utils/utils.js";
 import { dependencyGraph } from "../cache/dependencyGraph.js";
@@ -20,7 +20,7 @@ import { generateViewLocals } from "../tsgen/generateViewLocals.js";
 
 import { getProjectContext } from "../cache/project-context.js";
 
-export function scanFile(pugPath: string, config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string } {
+export function scanFile(pugPath: string, config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher, validate = true): { contract: ParsedContract | undefined, errors: ParseError[], rawGeneratedTs?: string, lineMap?: MappedLine[] } {
   lastScannedFile.path = pugPath;
   const relativePath = path.relative(config.projectPath, pugPath);
   Logger.log("info", 33, "RESCAN", relativePath);
@@ -68,7 +68,7 @@ export function scanFile(pugPath: string, config: Config, parsedResultStore: Par
     Logger.debug(`✅ Generated TypeScript for ${pugPath}:`);
 
     Logger.debug("Validating TypeScript");
-    let typescriptValidateErrors = validateGeneratedTs(tsResult.tsSource, tsResult.lineMap, pugPath, config);
+    const typescriptValidateErrors = validate ? validateGeneratedTs(tsResult.tsSource, tsResult.lineMap, pugPath, config) : [];
 
     errors.push(...typescriptValidateErrors);
 
@@ -86,7 +86,7 @@ export function scanFile(pugPath: string, config: Config, parsedResultStore: Par
       }
     }
 
-    return { contract, errors, rawGeneratedTs: tsResult.tsSource };
+    return { contract, errors, rawGeneratedTs: tsResult.tsSource, lineMap: tsResult.lineMap };
   } catch (err) {
     if (err instanceof ParseError) {
       errors.push(err);
@@ -107,6 +107,7 @@ const seen = new Set<string>();
 
 
 export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher, generateTypes = true):void  {
+  const pendingValidation: GeneratedTsInput[] = [];
   
   const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
   parsedResultStore.markStaleFiles()
@@ -143,7 +144,10 @@ export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResul
       }
       if (needsRescan) {
         
-        const { contract, errors } = scanFile(pugFile, config, parsedResultStore, watcher);
+        const { contract, errors, rawGeneratedTs, lineMap } = scanFile(pugFile, config, parsedResultStore, watcher, false);
+        if (contract && rawGeneratedTs && lineMap) {
+          pendingValidation.push({ tsSource: rawGeneratedTs, lineMap, oriFilePath: pugFile, config });
+        }
         
       }
     }
@@ -155,6 +159,14 @@ export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResul
     }
     
 
+  }
+
+  const batchErrors = validateGeneratedTsBatch(pendingValidation);
+  for (const [file, validationErrors] of batchErrors) {
+    const result = parsedResultStore.get(file);
+    if (result) {
+      parsedResultStore.setErrors(file, [...result.errors, ...validationErrors]);
+    }
   }
   
 }

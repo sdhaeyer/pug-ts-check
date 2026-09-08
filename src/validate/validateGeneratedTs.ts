@@ -12,6 +12,13 @@ import { getProjectContext } from "../cache/project-context.js";
 import { Config } from "../config/config.js";
 import { performance } from "node:perf_hooks";
 
+export interface GeneratedTsInput {
+    tsSource: string;
+    lineMap: MappedLine[];
+    oriFilePath: string;
+    config: Config;
+}
+
 export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], oriFilePath: string, config:Config ):ParseError[]   {
     Logger.debug("Starting type-check of generated TypeScript...");
     const startedAt = performance.now();
@@ -62,6 +69,43 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], or
 
     Logger.info(`[TIMING] ${path.relative(config.projectPath, oriFilePath)}: diagnostics ${diagnosticsDuration.toFixed(0)}ms, total type-check ${(performance.now() - startedAt).toFixed(0)}ms`);
     return errors;
+}
+
+export function validateGeneratedTsBatch(inputs: GeneratedTsInput[]): Map<string, ParseError[]> {
+    const errorsByFile = new Map<string, ParseError[]>();
+    if (inputs.length === 0) return errorsByFile;
+
+    const startedAt = performance.now();
+    const config = inputs[0].config;
+    const project = getProjectContext().tsProject;
+    const tmpDir = path.join(config.projectPath, config.tmpDir);
+    fs.mkdirSync(tmpDir, { recursive: true });
+
+    const virtualFiles = inputs.map((input, index) => ({
+        input,
+        fileName: path.join(tmpDir, `VirtualGeneratedFile-${index}.ts`),
+    }));
+
+    for (const { input, fileName } of virtualFiles) {
+        project.createSourceFile(fileName, input.tsSource, { overwrite: true });
+        errorsByFile.set(input.oriFilePath, []);
+    }
+
+    const diagnosticsStartedAt = performance.now();
+    const program = project.getProgram();
+    for (const { input, fileName } of virtualFiles) {
+        const sourceFile = project.getSourceFile(fileName);
+        if (!sourceFile) continue;
+
+        for (const diagnostic of program.getSemanticDiagnostics(sourceFile)) {
+            const error = diagnosticToParseError(diagnostic, input.oriFilePath, input.lineMap);
+            errorsByFile.get(input.oriFilePath)?.push(error);
+        }
+    }
+    const diagnosticsDuration = performance.now() - diagnosticsStartedAt;
+
+    Logger.info(`[TIMING] batch: ${inputs.length} files, diagnostics ${diagnosticsDuration.toFixed(0)}ms, total type-check ${(performance.now() - startedAt).toFixed(0)}ms`);
+    return errorsByFile;
 }
 
 export function diagnosticToParseError(diagnostic: Diagnostic, oriFilePath: string, lineMap: MappedLine[]): ParseError  {

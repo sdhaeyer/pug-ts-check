@@ -49,6 +49,12 @@ class ParsedResultStore {
       result.stale = stale;
     }
   }
+  setErrors(file: string, errors: ParseError[]) {
+    const result = this.get(file);
+    if (result) {
+      result.errors = errors;
+    }
+  }
   hasStale(): boolean {
     for (const result of this.results.values()) {
       if (result.stale) {
