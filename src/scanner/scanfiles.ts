@@ -106,7 +106,7 @@ const seen = new Set<string>();
 
 
 
-export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher, generateTypes = true):void  {
+export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResultStore, watcher?: FSWatcher, generateViewLocalsTypes = true):void  {
   const pendingValidation: GeneratedTsInput[] = [];
   
   const pugPaths = config.pugPaths.map((p) => path.resolve(config.projectPath, p));
@@ -153,12 +153,6 @@ export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResul
     }
     Logger.debug(` Type-check completed for all changed Pug files in ${pugRoot}`);
     
-    if (generateTypes) {
-      Logger.info("Generating view locals types...");
-      generateViewLocals(config, parsedResultStore);
-    }
-    
-
   }
 
   const batchErrors = validateGeneratedTsBatch(pendingValidation);
@@ -167,6 +161,11 @@ export function scanNewAndChanged(config: Config, parsedResultStore: ParsedResul
     if (result) {
       parsedResultStore.setErrors(file, [...result.errors, ...validationErrors]);
     }
+  }
+
+  if (generateViewLocalsTypes) {
+    Logger.info("Generating view locals types...");
+    generateViewLocals(config, parsedResultStore);
   }
   
 }
