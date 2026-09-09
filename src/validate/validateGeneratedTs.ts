@@ -29,16 +29,12 @@ export function validateGeneratedTs( tsSource: string, lineMap: MappedLine[], or
     }
 
     
-    const tmpDir = path.join(config.projectPath, config.tmpDir);
     const ctx = getProjectContext();
     const project = ctx.tsProject; 
     
 
     
-    // ensure the tmp dir exists on disk
-    fs.mkdirSync(tmpDir, { recursive: true });
-
-    const virtualFileName = path.join(tmpDir, "VirtualGeneratedFile.ts");
+    const virtualFileName = path.join(ctx.virtualTmpDir, "VirtualGeneratedFile.ts");
 
     // note: this is just a *name*, does not exist on disk
     const sourceFile = project.createSourceFile(virtualFileName, tsSource, {
@@ -77,13 +73,11 @@ export function validateGeneratedTsBatch(inputs: GeneratedTsInput[]): Map<string
 
     const startedAt = performance.now();
     const config = inputs[0].config;
-    const project = getProjectContext().tsProject;
-    const tmpDir = path.join(config.projectPath, config.tmpDir);
-    fs.mkdirSync(tmpDir, { recursive: true });
-
+    const ctx = getProjectContext();
+    const project = ctx.tsProject;
     const virtualFiles = inputs.map((input, index) => ({
         input,
-        fileName: path.join(tmpDir, `VirtualGeneratedFile-${index}.ts`),
+        fileName: path.join(ctx.virtualTmpDir, `VirtualGeneratedFile-${index}.ts`),
     }));
 
     for (const { input, fileName } of virtualFiles) {

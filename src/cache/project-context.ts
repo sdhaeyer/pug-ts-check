@@ -1,5 +1,7 @@
 
 import path from "node:path";
+import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import { Project } from "ts-morph";
 import type { Config } from "../config/config.js";
 import { Logger } from "../utils/Logger.js";
@@ -31,26 +33,14 @@ export function initProjectContext(config:Config): ProjectContext {
 
   const tsProject = new Project({ tsConfigFilePath });
 
-  const tmpPath = path.resolve(process.cwd(), config.projectPath, config.tmpDir);
-  const rootDir = path.resolve(tsProject.getCompilerOptions().rootDir ?? "");
-  if (rootDir && !tmpPath.startsWith(rootDir)) {
-    Logger.warn(`⚠️  Temporary file path is outside of configured rootDir:
-    tmpPath: ${tmpPath}
-    rootDir: ${rootDir}
-    This will likely cause TS6059 errors.
-    To fix this, set your 'tmpDir' in the config file to be a subdirectory of your 'rootDir'.
-    Example:
-      {
-        "projectPath": "${config.projectPath}",
-        "tmpDir": "${path.relative(config.projectPath, rootDir)}/.tmp"
-      }
-    Please move your .tmp directory under rootDir.`);
-  }
+  const rootDir = path.resolve(config.projectPath, tsProject.getCompilerOptions().rootDir ?? ".");
+  const virtualTmpDir = getUnusedVirtualSourceRoot(rootDir);
 
   const sharedLocalsMeta = resolveSharedLocals(config);
 
   _cachedContext = {    
     tsProject,
+    virtualTmpDir,
     
     sharedLocalsMeta 
   };
@@ -60,4 +50,15 @@ export function initProjectContext(config:Config): ProjectContext {
   Logger.init("Project context ready.");
   
   return _cachedContext;
+}
+
+function getUnusedVirtualSourceRoot(rootDir: string): string {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const candidate = path.join(rootDir, `.pug-ts-check-${randomUUID()}`);
+    if (!fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Unable to create a unique virtual source root under ${rootDir}`);
 }

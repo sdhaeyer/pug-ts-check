@@ -2,7 +2,6 @@
 import { z } from "zod";
 
 export const configSchema = z.object({
-  tmpDir: z.string().default(".tmp"),
   projectPath: z.string().default("./"),
   pugPaths: z.array(z.string()).default(["./src/views"]),
   logLevel: z.enum(["info", "debug", "warn", "error", "silent"]).default("info"),

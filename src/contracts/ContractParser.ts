@@ -25,10 +25,6 @@ export function parseContract(pugPath: string, config: Config, pugSource?: strin
     const contract = new ParsedContract(pugPath);
     const errors: ParseError[] = [];
 
-    const tmpDir = path.join(config.projectPath, config.tmpDir);
-
-
-
     if (!pugSource) {
         if (!fs.existsSync(pugPath)) {
             errors.push(new ParseError(`ContractParseError: Pug file not found`, pugPath, 1));
@@ -114,65 +110,6 @@ export function parseContract(pugPath: string, config: Config, pugSource?: strin
         fileSource += importObject.getAbsoluteImportStatement() + "\n";
     }
     fileSource += `type ExpectContract = ${contract.rawExpects};\n`;
-
-     if (false) {
-        // setup ts-morph
-        
-        const ctx = getProjectContext(); // ensure project context is initialized
-        const project = ctx.tsProject;
-        Logger.debug(`Creating virtual TypeScript file`);
-        const virtualFilePath = path.join(tmpDir, "VirtualExpectFile.ts");
-        const sourceFile = project.createSourceFile(virtualFilePath, fileSource, { overwrite: true });
-
-
-        Logger.debug("Get TypeAlias or Throw")
-        const typeAlias = sourceFile.getTypeAliasOrThrow("ExpectContract");
-
-        Logger.debug("Get Type from TypeAlias This line takes long");
-        const type = typeAlias.getType();
-
-        Logger.debug("Checking if type is an object");
-        if (!type.isObject()) {
-            if (contract.atExpectLine != -1) {
-                errors.push(new ParseError("ContractParseError: //@expect must describe an object type.", pugPath, contract.atExpectLine));
-            }
-        }
-
-
-        Logger.debug("Get properties from Type");
-        const props = type.getProperties();
-
-        const knownBuiltins = ["string", "number", "boolean", "Date", "Record", "Array", "any", "unknown", "object", "null", "undefined", "never"]
-
-   
-
-        Logger.debug("Parsing properties from @expect...");
-        for (const prop of props) {
-            const name = prop.getName();
-            const declarations = prop.getDeclarations();
-            const typeNode = declarations[0];
-            const typeAtLoc = prop.getTypeAtLocation(typeNode);
-            const typeParts = typeAtLoc.getText().split("|").map(p => p.trim());
-            for (const typeName of typeParts) {
-                Logger.debug(`Checking type: ${typeName} for property: ${name}`);
-                if (knownBuiltins.includes(typeName)) {
-                    continue; // ok
-                }
-                const sym = typeAtLoc.getSymbol();
-                if (!sym) {
-                    // Logger.debug(`No symbol found for type: ${typeName} in property: ${name}`);
-                    errors.push(new ParseError(`Unknown type referenced in @expect: '${typeName}'`, pugPath, contract.atExpectLine));
-
-                } else {
-                    // Logger.debug(`Symbol found for type: ${typeName} in property: ${name}`);
-                    // Logger.debug(sym);
-                }
-            }
-
-            // Logger.debug(`xxxxxxxx Adding property to virtualExpects: ${name} with type: ${typeAtLoc.getText()}`);
-            // contract.virtualExpects[name] = typeAtLoc.getText();
-        }
-    }
 
 
     // TODO: warn about unused imported types

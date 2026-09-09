@@ -7,7 +7,6 @@ import { askYesNo } from "../utils/askYesNo.js";
 
 
 export interface PugTsConfig {
-  tmpDir: string;
   projectPath: string;
   pugPaths: string[];
   logLevel: "info" | "debug" | "silent";

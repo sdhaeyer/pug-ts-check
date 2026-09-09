@@ -39,7 +39,6 @@ program
   .option("--rescan-all", "ignore the cache and rescan every Pug file")
   .option("--watch", "watch a directory for changes and re-run")
   .option("--projectPath <path>", "TypeScript project path")
-  .option("--tmpDir <dir>", "temporary dir")
   .option("--config <pug.tsconfig.json>", "path to Pug TypeScript config file")
   .action(async (targetPath, options) => {
     
@@ -69,9 +68,6 @@ program
 
     // overwrite the config with the options
 
-    if (options.tmpDir) {
-      config.tmpDir = options.tmpDir;
-    }
     if (options.projectPath) {
       config.projectPath = options.projectPath;
     }
