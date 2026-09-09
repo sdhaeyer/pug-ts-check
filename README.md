@@ -1,19 +1,3 @@
-Hi, most of the README, is or was generated with AI, lots of the code too, or definitely with help. 
-
-Just that you know. 
-
-I became a bit of a pug lover ... :) the dog ;) , and needed a Typescript validation. Pug was new to me. Node as well, I have been a long time in Javascript ... I am getting older. But so, Typescript was new as well, and I fell a bit in love with Typescript, Pug, and Node/npm. 
-
-So basically, this is a Node npm package, that parses pug templates ... to see if what you're using is validly typed (scripted). 
-
-Which means if you change your code ... the program will check if everything in your pugs is still consistent. Lots of updates are possible; this is a working version that was handy for me ... so I stopped there a bit. Also not working on the project anymore where I was using it. Once I'm back there I will ... continue to improve. 
-
-I also created a simple VS-extension so you can (at least) click through on the import links above in the page to go to the classes/interfaces you defined. Might make that public as well later ... 
-
-Kr, Sam 2025-07-31
-
-
-
 # 🧩 pug-ts-check
 
 **`pug-ts-check`** is a **static TypeScript checker for Pug templates**. It performs offline analysis of your `.pug` views to ensure that the locals and mixin arguments match their expected TypeScript types.
@@ -331,3 +315,21 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Created with ❤️ to bring modern type safety to template rendering.  
 Contributions, suggestions, and integrations welcome!
+
+---
+
+## A note from the author
+
+Hi, most of the README, is or was generated with AI, lots of the code too, or definitely with help. 
+
+Just that you know. 
+
+I became a bit of a pug lover ... :) the dog ;) , and needed a Typescript validation. Pug was new to me. Node as well, I have been a long time in Javascript ... I am getting older. But so, Typescript was new as well, and I fell a bit in love with Typescript, Pug, and Node/npm. 
+
+So basically, this is a Node npm package, that parses pug templates ... to see if what you're using is validly typed (scripted). 
+
+Which means if you change your code ... the program will check if everything in your pugs is still consistent. Lots of updates are possible; this is a working version that was handy for me ... so I stopped there a bit. Also not working on the project anymore where I was using it. Once I'm back there I will ... continue to improve. 
+
+I also created a simple VS-extension so you can (at least) click through on the import links above in the page to go to the classes/interfaces you defined. Might make that public as well later ... 
+
+Kr, Sam 2025-07-31
