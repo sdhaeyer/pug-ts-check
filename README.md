@@ -100,7 +100,6 @@ We are working on providing pre-patched Pug packages or a patch automation tool 
 
 ```json
 {
-  "projectPath": "./",
   "pugPaths": ["./views"],
   "logLevel": "info",
   "viewsRoot": "./views",
@@ -112,7 +111,6 @@ We are working on providing pre-patched Pug packages or a patch automation tool 
 
 | Field         | Description                                                                 |
 |---------------|-----------------------------------------------------------------------------|
-| `projectPath` | Project root containing your app's `tsconfig.json` and the configured paths |
 | `pugPaths`    | One or more directories where `.pug` files live                             |
 | `logLevel`    | Logging verbosity (`info`, `warn`, `error`, `debug`)                        |
 | `viewsRoot`   | Base directory for resolving included views (typically `views` folder)      |
