@@ -100,23 +100,11 @@ We are working on providing pre-patched Pug packages or a patch automation tool 
 
 ```json
 {
-  "tmpDir": "./src/.tmp",
-  "projectPath": "../../srv/apps/string-portrait/code/",
-  "pugPaths": ["./src/views"],
-  "logLevel": "info",
-  "viewsRoot": "./src/views",
-  "typesPath": "./src/types"
-}
-```
-or e.g.
-```json
-{
-  "tmpDir": "./src/.tmp",
   "projectPath": "./",
   "pugPaths": ["./views"],
   "logLevel": "info",
   "viewsRoot": "./views",
-  "typesPath": "./types"
+  "typesPath": "./src/types"
 }
 ```
 
@@ -124,7 +112,6 @@ or e.g.
 
 | Field         | Description                                                                 |
 |---------------|-----------------------------------------------------------------------------|
-| `tmpDir`      | Temporary directory used for generated `.ts` files                          |
 | `projectPath` | Project root containing your app's `tsconfig.json` and the configured paths |
 | `pugPaths`    | One or more directories where `.pug` files live                             |
 | `logLevel`    | Logging verbosity (`info`, `warn`, `error`, `debug`)                        |
@@ -194,7 +181,6 @@ npx pug-ts-check [path] [options]
 | `--report`        | Show cached diagnostics without rescanning   |
 | `--check-only`    | Check templates without writing view locals  |
 | `--rescan-all`    | Ignore the cache and scan every Pug file     |
-| `--tmpDir <dir>`  | Override temp directory                      |
 | `--projectPath <path>` | Override the project root               |
 | `--config <path>` | Use an alternative config file (default: `pug.tsconfig.json`) |
 
@@ -283,11 +269,12 @@ res.typedRender("pages/home", {
 
 ```
 project-root/
+├── .tmp/                     # automatically generated cache
+│   └── pug.parseResults.json
 ├── src/
-│   ├── views/                # Pug templates
-│   ├── types/
+│   └── types/
 │   │   └── viewlocals.d.ts   # Generated typings
-│   └── .tmp/                 # Temp output (safe to ignore)
+├── views/                    # Pug templates
 ├── pug.tsconfig.json         # Static checker config
 ├── tsconfig.json             # TypeScript config
 ```
