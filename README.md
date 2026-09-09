@@ -42,10 +42,6 @@ When rendering Pug templates in a Node.js/Express app, mismatches between what's
 npm install pug-ts-check --save-dev
 ```
 
-```bash
-npm install pug-ts-check --save-dev
-```
-
 ## ⚠️ **Important: Pug Patches for TypeScript Annotations**
 
 **These patches are NOT required for `pug-ts-check` to work** - the tool can analyze your templates without them. However, **the patches ARE required for your Pug templates to compile correctly** when you add TypeScript annotations like `//@import` and typed mixin parameters.
@@ -145,7 +141,7 @@ or e.g.
 | Field         | Description                                                                 |
 |---------------|-----------------------------------------------------------------------------|
 | `tmpDir`      | Temporary directory used for generated `.ts` files                          |
-| `projectPath` | Path to your app's `tsconfig.json` (needed for type resolution)             |
+| `projectPath` | Project root containing your app's `tsconfig.json` and the configured paths |
 | `pugPaths`    | One or more directories where `.pug` files live                             |
 | `logLevel`    | Logging verbosity (`info`, `warn`, `error`, `debug`)                        |
 | `viewsRoot`   | Base directory for resolving included views (typically `views` folder)      |
@@ -208,18 +204,35 @@ npx pug-ts-check [path] [options]
 | Flag              | Description                                  |
 |-------------------|----------------------------------------------|
 | `[path]`          | File or folder to analyze (optional)         |
-| `--watch`         | Re-run when `.pug` files change              |
+| `--watch`         | Re-run when Pug files or related TypeScript files change |
 | `--verbose`       | Show detailed output                         |
 | `--silent`        | Suppress logs                                |
+| `--report`        | Show cached diagnostics without rescanning   |
+| `--check-only`    | Check templates without writing view locals  |
+| `--rescan-all`    | Ignore the cache and scan every Pug file     |
 | `--tmpDir <dir>`  | Override temp directory                      |
-| `--projectPath`   | Path to `tsconfig.json`                      |
-| `--pugTsConfig`   | Use alternative config file (default: `pug.tsconfig.json`) |
+| `--projectPath <path>` | Override the project root               |
+| `--config <path>` | Use an alternative config file (default: `pug.tsconfig.json`) |
+
+For a normal incremental check, run the command without extra flags. Use
+`--rescan-all` when you want to rebuild the complete cached result set. The
+`--report` option is useful after a watch run when you want to inspect the
+cached diagnostics without parsing the templates again.
+
+In watch mode, the interactive keys are:
+
+- `r`: rescan changed and stale files
+- `a`: rescan all Pug files
+- `s`: show a summary
+- `e`: show cached errors
+- `f`: show the full cached log
+- `g`: show generated TypeScript for the last scanned file
 
 ---
 
 ## 🧾 Output
 
-After running, you'll get a file like:
+By default, a successful check generates a `viewlocals.d.ts` file like:
 
 ```ts
 // src/types/viewlocals.d.ts
@@ -233,10 +246,13 @@ declare namespace ViewLocals {
 
 Use this for type safety in your controllers.
 
+With `--check-only`, the templates are type-checked but the generated
+`viewlocals.d.ts` file is not written.
+
 ---
 ## 🧩 Express Integration with `typedRender`
 
-To enforce view-local types at runtime, you can extend Express's `res` object with a `typedRender` helper.
+To enforce view-local types when compiling your application, you can extend Express's `res` object with a `typedRender` helper. The helper still calls Express's normal `res.render` at runtime; the type safety comes from TypeScript.
 
 ### 1. Add a Type Augmentation
 
